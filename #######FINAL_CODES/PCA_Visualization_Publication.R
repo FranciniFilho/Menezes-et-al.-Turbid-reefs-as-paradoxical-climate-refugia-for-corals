@@ -224,43 +224,50 @@ create_loadings_panel <- function(loadings_df, exp_var, arrow_scale = 1.5) {
 
 # Painel de Legenda (Refatorado para patchwork)
 create_legend_panel <- function(reefs, habs) {
-    # Legenda de recifes (cores)
+    # Tema de legenda com tamanhos dobrados (100% maior)
+    legend_theme <- theme(
+        legend.title = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 18),
+        legend.key.size = unit(1.5, "cm")
+    )
+
+    # Legenda de recifes (cores) - símbolos dobrados
     p_reef <- ggplot(data.frame(Reef = factor(reefs, levels = reefs)), aes(x = 1, y = seq_along(Reef), fill = Reef)) +
-        geom_point(shape = 21, size = 3.5) +
+        geom_point(shape = 21, size = 7) +
         scale_fill_manual(values = reef_colors, name = "Reef") +
         theme_publication +
-        theme(legend.position = "right")
+        theme(legend.position = "right") +
+        legend_theme
 
-    # Legenda de habitats (formas)
+    # Legenda de habitats (formas) - símbolos dobrados
     p_hab <- ggplot(data.frame(HAB = factor(habs, levels = habs)), aes(x = 1, y = seq_along(HAB), shape = HAB)) +
-        geom_point(size = 3.5, fill = "grey60") +
+        geom_point(size = 7, fill = "grey60") +
         scale_shape_manual(values = habitat_shapes, name = "Habitat") +
         theme_publication +
-        theme(legend.position = "right")
+        theme(legend.position = "right") +
+        legend_theme
 
-    # Legenda manual para Arch
-    p_arch <- ggplot(data.frame(x = 1, y = 2:1, label = c("Inner Arc", "Outer Arc"), s = c(1.2, 0.4), c = c("black", "grey60")), aes(x, y)) +
-        geom_point(shape = 21, size = 3.5, fill = "grey70", color = c("black", "grey60"), stroke = c(1.2, 0.4)) +
-        geom_text(aes(x + 1.0, y, label = label), hjust = 0, size = 3) +
-        xlim(0.5, 4.0) +
+    # Legenda manual para Arch - símbolos e texto dobrados, alinhados
+    p_arch <- ggplot(data.frame(x = 1, y = 2:1, label = c("Inner Arc", "Outer Arc")), aes(x, y)) +
+        geom_point(shape = 21, size = 7, fill = "grey70", color = c("black", "grey60"), stroke = c(2.4, 0.8)) +
+        geom_text(aes(x + 0.3, y, label = label), hjust = 0, size = 6) +
+        xlim(0.5, 3.0) +
         ylim(0.5, 2.5) +
         labs(title = "Arc") +
         theme_void() +
         theme(
-            plot.title = element_text(face = "bold", size = 10, hjust = 0),
+            plot.title = element_text(face = "bold", size = 20, hjust = 0),
             plot.margin = margin(5, 5, 5, 5)
         )
 
     # Função interna para extrair legenda de forma extremamente robusta
     get_leg <- function(p) {
         cat("      - Extraindo componente de legenda...\n")
-        # Tentar via cowplot::get_plot_component com return_all=TRUE para evitar erro 3.5.0+
         leg <- cowplot::get_plot_component(p, "guide-box", return_all = TRUE)
         if (is.list(leg) && length(leg) > 0) {
             leg <- leg[[1]]
         }
         if (is.null(leg)) {
-            # Tentar cowplot::get_legend antigo
             leg <- cowplot::get_legend(p)
         }
         return(leg)
@@ -272,11 +279,14 @@ create_legend_panel <- function(reefs, habs) {
     leg_hab <- get_leg(p_hab)
 
     cat("      - Combinando legendas...\n")
-    # Combinar usando patchwork
-    res <- wrap_elements(full = leg_reef) /
-        wrap_elements(full = leg_hab) /
-        wrap_elements(full = p_arch) +
-        plot_layout(heights = c(1.2, 0.8, 1))
+    # Combinar usando cowplot para evitar tags automáticas do patchwork
+    res <- cowplot::plot_grid(
+        leg_reef,
+        leg_hab,
+        p_arch,
+        ncol = 1,
+        rel_heights = c(1.2, 0.8, 1)
+    )
 
     return(res)
 }
