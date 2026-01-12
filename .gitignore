@@ -1,0 +1,30 @@
+# --- Research Results and Models ---
+\#\#\#\#\#\#\#FINAL_RESULTS/
+\#\#\#\#\#\#\#LAST ROUND MS/
+\#\#\#\#\#\#\#PHOTOS AND MAPS/
+
+# --- Specific File Types ---
+*.rds
+*.RData
+*.xlsx
+*.csv
+*.png
+*.pdf
+
+# --- Assistant Metadata and Temp Files ---
+.claude/
+.gemini/
+tmpclaude-*
+cmdstanr/
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# --- Exceptions (Ensure code and plans are tracked) ---
+!\#\#\#\#\#\#\#FINAL_CODES/*.R
+!\#\#\#\#\#\#\#FINAL_CODES/*.py
+!\#\#\#\#\#\#\#FINAL_CODES/CLAUDE.md
+!\#\#\#\#\#\#\#FINAL_CODES/GEMINI.md
+!plans/*.md
+!\#\#\#\#\#\#\#FINAL_CODES/test_prior_syntax.R

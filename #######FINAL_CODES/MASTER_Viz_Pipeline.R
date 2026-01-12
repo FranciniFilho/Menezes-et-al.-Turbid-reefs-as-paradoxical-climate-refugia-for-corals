@@ -142,11 +142,11 @@ generate_forest_plot <- function(model, model_name) {
         geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.7) +
         scale_fill_manual(values = c("TRUE" = color_primary, "FALSE" = "gray60"), guide = "none") +
         labs(
-            title = "Magnitude dos Efeitos Fixos",
-            subtitle = paste("Modelo:", gsub("_", " ", gsub("WINNER_", "", model_name))),
-            x = "Estimativa do Efeito (Escala Padronizada)",
+            title = "Magnitude of Fixed Effects",
+            subtitle = paste("Model:", gsub("_", " ", gsub("WINNER_", "", model_name))),
+            x = "Effect Estimate (Standardized Scale)",
             y = NULL,
-            caption = "Pontos: Mediana | Barras: IC 89% e 95%"
+            caption = "Points: Median | Bars: 89% and 95% CI"
         ) +
         theme_publication()
 
@@ -155,7 +155,7 @@ generate_forest_plot <- function(model, model_name) {
 
 ### 7. GERAÇÃO DE EFEITOS MARGINAIS (RIBBON PLOTS) --------------------------------
 generate_marginal_effects <- function(model, model_name) {
-    cat("    -> Gerando Efeitos Marginais (Ribbon)...\n")
+    cat("    -> Gerando Efeitos Marginais (Ribbon/Point)...\n")
 
     ce <- tryCatch(
         {
@@ -177,15 +177,36 @@ generate_marginal_effects <- function(model, model_name) {
         data_eff <- ce[[eff_name]]
         x_var <- names(data_eff)[1]
 
-        p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
-            geom_ribbon(aes(ymin = lower__, ymax = upper__), fill = color_primary, alpha = 0.25) +
-            geom_line(color = color_primary, linewidth = 1.2) +
-            labs(
-                title = paste("Efeito de", gsub("_scaled", "", x_var)),
-                y = "Predição",
-                x = gsub("_scaled", "", x_var)
-            ) +
-            theme_publication()
+        # Detectar se a variável X é categórica ou numérica
+        x_is_categorical <- is.factor(data_eff[[x_var]]) || is.character(data_eff[[x_var]])
+
+        if (x_is_categorical) {
+            # Para variáveis categóricas: usar pointrange (pontos com barras de erro)
+            p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
+                geom_pointrange(
+                    aes(ymin = lower__, ymax = upper__),
+                    color = color_primary,
+                    size = 1,
+                    linewidth = 1.2
+                ) +
+                labs(
+                    title = paste("Effect of", gsub("_scaled", "", x_var)),
+                    y = "Prediction",
+                    x = gsub("_scaled", "", x_var)
+                ) +
+                theme_publication()
+        } else {
+            # Para variáveis contínuas: usar ribbon + line
+            p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
+                geom_ribbon(aes(ymin = lower__, ymax = upper__), fill = color_primary, alpha = 0.25) +
+                geom_line(color = color_primary, linewidth = 1.2) +
+                labs(
+                    title = paste("Effect of", gsub("_scaled", "", x_var)),
+                    y = "Prediction",
+                    x = gsub("_scaled", "", x_var)
+                ) +
+                theme_publication()
+        }
 
         plot_list[[eff_name]] <- p
     }
@@ -196,9 +217,9 @@ generate_marginal_effects <- function(model, model_name) {
 
     combined <- wrap_plots(plot_list, ncol = ncol_calc) +
         plot_annotation(
-            title = "Efeitos Marginais Condicionais",
-            subtitle = paste("Modelo:", gsub("_", " ", gsub("WINNER_", "", model_name))),
-            caption = "Linha: Mediana | Banda: IC 95%",
+            title = "Conditional Marginal Effects",
+            subtitle = paste("Model:", gsub("_", " ", gsub("WINNER_", "", model_name))),
+            caption = "Line/Point: Median | Band/Bar: 95% CI",
             theme = theme(
                 plot.title = element_text(face = "bold", size = 18),
                 plot.subtitle = element_text(size = 12)
@@ -212,16 +233,16 @@ generate_marginal_effects <- function(model, model_name) {
 generate_ppc_plots <- function(model, model_name, model_type) {
     cat("    -> Gerando Validação Preditiva (PPC)...\n")
 
-    response_label <- if (model_type == "ZOIB") "Cobertura (Proporção)" else "Valor"
+    response_label <- if (model_type == "ZOIB") "Cover (Proportion)" else "Value"
 
     # Densidade
     ppc_dens <- pp_check(model, ndraws = 100, type = "dens_overlay") +
         scale_color_manual(values = c("y" = "black", "yrep" = color_primary)) +
         labs(
-            title = "Validação de Densidade",
-            subtitle = "Preto: Observado | Azul: Simulado",
+            title = "Density Validation",
+            subtitle = "Black: Observed | Blue: Simulated",
             x = response_label,
-            y = "Densidade"
+            y = "Density"
         ) +
         theme_publication() +
         theme(legend.position = "none")
@@ -232,10 +253,10 @@ generate_ppc_plots <- function(model, model_name, model_type) {
             {
                 pp_check(model, ndraws = 100, type = "stat", stat = function(y) mean(y == 0)) +
                     labs(
-                        title = "Validação de Zeros",
-                        subtitle = "Linha preta deve estar sob distribuição azul",
-                        x = "Proporção de Zeros",
-                        y = "Frequência"
+                        title = "Zero Validation",
+                        subtitle = "Black line should be under blue distribution",
+                        x = "Proportion of Zeros",
+                        y = "Frequency"
                     ) +
                     theme_publication() +
                     theme(legend.position = "none")
@@ -257,10 +278,10 @@ generate_ppc_plots <- function(model, model_name, model_type) {
     ppc_ecdf <- pp_check(model, ndraws = 100, type = "ecdf_overlay") +
         scale_color_manual(values = c("y" = "black", "yrep" = color_primary)) +
         labs(
-            title = "ECDF Cumulativa",
-            subtitle = "Ajuste da distribuição cumulativa",
+            title = "Cumulative ECDF",
+            subtitle = "Cumulative distribution fit",
             x = response_label,
-            y = "Probabilidade Cumulativa"
+            y = "Cumulative Probability"
         ) +
         theme_publication() +
         theme(legend.position = "none")
@@ -291,22 +312,22 @@ generate_diagnostics <- function(model, model_name) {
         theme_publication() +
         scale_color_manual(values = okabe_ito[1:4]) +
         labs(
-            title = "Trace Plots (Convergência)",
-            subtitle = "Cadeias devem parecer 'lagartas peludas' bem misturadas"
+            title = "Trace Plots (Convergence)",
+            subtitle = "Chains should look like well-mixed 'hairy caterpillars'"
         )
 
     # Autocorrelação
     p_acf <- mcmc_acf(model, pars = params_to_trace) +
         theme_publication() +
         labs(
-            title = "Autocorrelação",
-            subtitle = "Deve decair rapidamente para zero"
+            title = "Autocorrelation",
+            subtitle = "Should decay rapidly to zero"
         )
 
     combined <- (p_trace / p_acf) +
         plot_annotation(
-            title = "Diagnósticos de Convergência MCMC",
-            subtitle = paste("Modelo:", gsub("_", " ", gsub("WINNER_", "", model_name)))
+            title = "MCMC Convergence Diagnostics",
+            subtitle = paste("Model:", gsub("_", " ", gsub("WINNER_", "", model_name)))
         )
 
     return(combined)
