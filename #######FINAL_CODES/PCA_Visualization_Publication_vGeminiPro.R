@@ -1,7 +1,7 @@
 # ============================================================================
 # PCA_Visualization_Publication_vGeminiPro.R
 # Geração de figuras PCA de alta qualidade para publicação
-# Versão: Gemini Pro Refined V3 (Correção final de overlap e clipping)
+# Versão: Gemini Pro Refined V5 Hybrid (Footer fix: Increased Heights)
 # ============================================================================
 
 # --- 1. PACOTES E CONFIGURAÇÃO ---
@@ -11,7 +11,7 @@ libs <- c(
     "dplyr", # Manipulação de dados
     "ggplot2", # Plotagem base
     "patchwork", # Composição de painéis ( CRUCIAL para alinhamento)
-    "cowplot", # Extração de legendas
+    "cowplot", # Extração de legendas e montagem final
     "scales", # Rescale de tamanhos
     "grid" # arrow() e unit() para loadings
 )
@@ -247,8 +247,6 @@ create_full_legend_strip <- function(reefs, habs, size_scale = 1.0) {
         legend_theme
     leg_hab <- cowplot::get_legend(p_hab)
 
-    # Manual Arc Legend
-    # FIX: Expanded ylim to 0-2 to prevent clipping of large points
     p_arch_manual <- ggplot(data.frame(x = 1, y = 1), aes(x, y)) +
         annotate("point", x = 1, y = 1, shape = 21, size = 5 * size_scale, fill = "grey70", color = "black", stroke = 1.2) +
         annotate("text", x = 1.2, y = 1, label = "Inner Arc", hjust = 0, size = 4.5 * size_scale) +
@@ -276,7 +274,7 @@ create_full_legend_strip <- function(reefs, habs, size_scale = 1.0) {
 }
 
 
-# --- 7. ARQUITETURA DE MONTAGEM (Patchwork com Spacers) ---
+# --- 7. ARQUITETURA DE MONTAGEM (Híbrida: Patchwork Plots + Cowplot Assembly) ---
 
 create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     cat("    - Criando panels de Magnitude...\n")
@@ -288,21 +286,30 @@ create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     load_plot <- create_loadings_panel(loadings_df, exp_var)
     leg_strip <- create_full_legend_strip(unique(df$Reef_name), unique(df$HAB))
 
+    # Grid de Plots via Patchwork (Alinhamento perfeito)
     layout_design <- "
     ABC
     DE#
-    SSS
-    FFF
     "
 
-    spacer <- plot_spacer()
-
-    # FIX: Increased spacer height to 0.4 to prevent overlap
-    final_plot <- b1 + b2 + b3 + b4 + load_plot + spacer + leg_strip +
-        plot_layout(design = layout_design, heights = c(1, 1, 0.4, 0.3), widths = c(1, 1, 1)) +
+    # Adicionando um spacer (plot_spacer()) para preencher o slot #
+    plots_grid <- b1 + b2 + b3 + b4 + load_plot + plot_spacer() +
+        plot_layout(design = layout_design, widths = c(1, 1, 1)) +
         plot_annotation(tag_levels = "a", tag_suffix = ")")
 
-    return(final_plot)
+    # Montagem Final Híbrida via Cowplot
+    cat("    - Montando layout final (Híbrido)...\n")
+
+    final_combined <- cowplot::plot_grid(
+        plots_grid,
+        NULL, # Espaçador Rígido Vertical
+        leg_strip,
+        ncol = 1,
+        rel_heights = c(10, 1, 2.5), # Aumentado ratio da legenda
+        align = "v"
+    )
+
+    return(final_combined)
 }
 
 create_variability_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
@@ -317,18 +324,24 @@ create_variability_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     layout_design <- "
     AB
     CD
-    SS
-    EE
     "
 
-    spacer <- plot_spacer()
-
-    # FIX: Increased spacer height to 0.4 to prevent overlap
-    final_plot <- b1 + b2 + b3 + load_plot + spacer + leg_strip +
-        plot_layout(design = layout_design, heights = c(1, 1, 0.4, 0.3), widths = c(1, 1)) +
+    plots_grid <- b1 + b2 + b3 + load_plot +
+        plot_layout(design = layout_design, widths = c(1, 1)) +
         plot_annotation(tag_levels = "a", tag_suffix = ")")
 
-    return(final_plot)
+    cat("    - Montando layout final (Híbrido)...\n")
+
+    final_combined <- cowplot::plot_grid(
+        plots_grid,
+        NULL, # Espaçador Rígido Vertical
+        leg_strip,
+        ncol = 1,
+        rel_heights = c(10, 1, 2.5), # Aumentado ratio da legenda
+        align = "v"
+    )
+
+    return(final_combined)
 }
 
 
@@ -352,12 +365,12 @@ for (sn in names(scenarios)) {
     cat("  - Generating Magnitude figure...\n")
     fig_mag <- create_magnitude_figure_v2(df, loadings_mag, ev_mag, sc)
     mag_path <- file.path(output_dir, sprintf("Figure_PCA_Magnitude_%s", sn))
-    ggsave(paste0(mag_path, ".png"), fig_mag, width = 14, height = 11, dpi = 300)
+    ggsave(paste0(mag_path, ".png"), fig_mag, width = 14, height = 13, dpi = 300) # Fix: increased height
 
     cat("  - Generating Variability figure...\n")
     fig_var <- create_variability_figure_v2(df, loadings_var, ev_var, sc)
     var_path <- file.path(output_dir, sprintf("Figure_PCA_Variability_%s", sn))
-    ggsave(paste0(var_path, ".png"), fig_var, width = 12, height = 11, dpi = 300)
+    ggsave(paste0(var_path, ".png"), fig_var, width = 12, height = 13, dpi = 300) # Fix: increased height
 
     cat(sprintf("  ✓ %s finished\n", sn))
 }
