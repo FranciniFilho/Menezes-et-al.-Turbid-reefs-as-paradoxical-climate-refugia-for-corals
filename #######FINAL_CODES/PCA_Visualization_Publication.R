@@ -47,34 +47,43 @@ habitat_shapes <- c(
 # Labels para variabilidade (usados nos títulos dos painéis)
 var_labels_var_default <- c("SST CV (%)", "DLI CV (%)", "Chl-a CV (%)")
 
-# Labels para loadings (abreviados e limpos)
+# Labels para loadings (abreviados e limpos para todos os cenários)
 loadings_labels <- c(
+    # Magnitude
     "log(sst_mean+1)" = "log(SST+1)",
     "log(mean_DLI_local+1)" = "log(DLI+1)",
     "log(chl_mean+1)" = "log(Chl+1)",
-    "sqrt(DHW>4)" = "√(DHW>4)",
-    "sst_cv" = "SST CV",
-    "dli_cv" = "DLI CV",
-    "chl_cv" = "Chl CV",
-    "cv_DLI_local" = "DLI CV"
+    "sqrt(DHW>4)" = "sqrt(DHW>4)",
+    # Variability - CV_02
+    "sst_cv_2" = "SST CV",
+    "dli_cv_2" = "DLI CV",
+    "chl_cv_2" = "Chl CV",
+    # Variability - CV_30
+    "sst_cv_30" = "SST CV",
+    "dli_cv_30" = "DLI CV",
+    "chl_cv_30" = "Chl CV",
+    # Variability - CV_ALL
+    "sst_cv_all" = "SST CV",
+    "cv_DLI_local" = "DLI CV",
+    "chl_cv_all" = "Chl CV"
 )
 
-# Tema profissional
-theme_publication <- theme_classic(base_size = 12) +
+# Tema profissional (Tamanhos aumentados em 20% conforme solicitado)
+theme_publication <- theme_classic(base_size = 14.4) +
     theme(
         text = element_text(color = "black"),
-        axis.text = element_text(size = 10),
-        axis.title = element_text(size = 11, face = "bold"),
-        plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
-        legend.title = element_text(size = 10, face = "bold"),
-        legend.text = element_text(size = 9),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 13, face = "bold"),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 11),
         panel.grid.major = element_line(
             color = "grey90",
             linetype = "dashed",
             linewidth = 0.3
         ),
         strip.background = element_blank(),
-        plot.tag = element_text(face = "bold", size = 12)
+        plot.tag = element_text(face = "bold", size = 14)
     )
 
 # --- 3. CONFIGURAÇÃO DOS CENÁRIOS ---
@@ -88,7 +97,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (°C)", "DLI (mol m⁻² d⁻¹)", "Chl-a (mg m⁻³)", "DHW>4 (freq)"),
+        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
         var_var_cols = c("sst_cv_2", "dli_cv_2", "chl_cv_2"),
         var_var_labels = var_labels_var_default
     ),
@@ -100,7 +109,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (°C)", "DLI (mol m⁻² d⁻¹)", "Chl-a (mg m⁻³)", "DHW>4 (freq)"),
+        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
         var_var_cols = c("sst_cv_30", "dli_cv_30", "chl_cv_30"),
         var_var_labels = var_labels_var_default
     ),
@@ -112,7 +121,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (°C)", "DLI (mol m⁻² d⁻¹)", "Chl-a (mg m⁻³)", "DHW>4 (freq)"),
+        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
         var_var_cols = c("sst_cv_all", "cv_DLI_local", "chl_cv_all"),
         var_var_labels = var_labels_var_default
     )
@@ -196,6 +205,9 @@ create_loadings_panel <- function(loadings_df, exp_var, arrow_scale = 1.5) {
     loadings_df$yend <- loadings_df$PC2 * arrow_scale
     loadings_df$label <- sapply(loadings_df$variable, function(v) {
         v_clean <- trimws(v)
+        # Sanitizar para evitar falha no PDF (ex: m⁻³ -> m-3)
+        v_clean <- iconv(v_clean, to = "ASCII//TRANSLIT")
+
         if (v_clean %in% names(loadings_labels)) {
             return(loadings_labels[[v_clean]])
         }
@@ -216,51 +228,53 @@ create_loadings_panel <- function(loadings_df, exp_var, arrow_scale = 1.5) {
             arrow = arrow(length = unit(0.15, "cm"), type = "closed"),
             color = "#d62728", linewidth = 0.7
         ) +
-        geom_text(aes(x = xend * 1.2, y = yend * 1.2, label = label), size = 3, fontface = "bold") +
+        geom_text(aes(x = xend * 1.2, y = yend * 1.2, label = label), size = 4, fontface = "bold") +
         labs(title = "Loadings", x = sprintf("PC1 (%.1f%%)", exp_var[1]), y = sprintf("PC2 (%.1f%%)", exp_var[2])) +
         theme_publication +
         coord_fixed(ratio = 1, xlim = c(-2.2, 2.2), ylim = c(-2.2, 2.2))
 }
 
-# Painel de Legenda (Refatorado para patchwork)
-create_legend_panel <- function(reefs, habs) {
-    # Tema de legenda com tamanhos dobrados (100% maior)
+# Painel de Legenda (Refatorado para Layout Lado a Lado + ARC abaixo)
+# size_scale: 1.0 para Magnitude, 0.75 para Variability (25% menor)
+create_legend_panel <- function(reefs, habs, size_scale = 1.0) {
+    # Tema de legenda com tamanhos ajustados pelo scale
     legend_theme <- theme(
-        legend.title = element_text(size = 20, face = "bold"),
-        legend.text = element_text(size = 18),
-        legend.key.size = unit(1.5, "cm")
+        legend.title = element_text(size = 20 * size_scale, face = "bold"),
+        legend.text = element_text(size = 18 * size_scale),
+        legend.key.size = unit(1.5 * size_scale, "cm"),
+        legend.margin = margin(0, 0, 0, 0)
     )
 
-    # Legenda de recifes (cores) - símbolos dobrados
+    # Legenda de recifes (cores)
     p_reef <- ggplot(data.frame(Reef = factor(reefs, levels = reefs)), aes(x = 1, y = seq_along(Reef), fill = Reef)) +
-        geom_point(shape = 21, size = 7) +
+        geom_point(shape = 21, size = 7 * size_scale) +
         scale_fill_manual(values = reef_colors, name = "Reef") +
         theme_publication +
         theme(legend.position = "right") +
         legend_theme
 
-    # Legenda de habitats (formas) - símbolos dobrados
+    # Legenda de habitats (formas)
     p_hab <- ggplot(data.frame(HAB = factor(habs, levels = habs)), aes(x = 1, y = seq_along(HAB), shape = HAB)) +
-        geom_point(size = 7, fill = "grey60") +
+        geom_point(size = 7 * size_scale, fill = "grey60") +
         scale_shape_manual(values = habitat_shapes, name = "Habitat") +
         theme_publication +
         theme(legend.position = "right") +
         legend_theme
 
-    # Legenda manual para Arch - símbolos e texto dobrados, alinhados
+    # Legenda manual para Arch - Ajustada para não sobrepor Reef acima
     p_arch <- ggplot(data.frame(x = 1, y = 2:1, label = c("Inner Arc", "Outer Arc")), aes(x, y)) +
-        geom_point(shape = 21, size = 7, fill = "grey70", color = c("black", "grey60"), stroke = c(2.4, 0.8)) +
-        geom_text(aes(x + 0.3, y, label = label), hjust = 0, size = 6) +
-        xlim(0.5, 3.0) +
+        geom_point(shape = 21, size = 7 * size_scale, fill = "grey70", color = c("black", "grey60"), stroke = c(2.4, 0.8) * size_scale) +
+        geom_text(aes(x + 0.3, y, label = label), hjust = 0, size = 6 * size_scale) +
+        xlim(0.5, 4.0) +
         ylim(0.5, 2.5) +
         labs(title = "Arc") +
         theme_void() +
         theme(
-            plot.title = element_text(face = "bold", size = 20, hjust = 0),
+            plot.title = element_text(face = "bold", size = 20 * size_scale, hjust = 0),
             plot.margin = margin(5, 5, 5, 5)
         )
 
-    # Função interna para extrair legenda de forma extremamente robusta
+    # Função interna para extrair legenda
     get_leg <- function(p) {
         cat("      - Extraindo componente de legenda...\n")
         leg <- cowplot::get_plot_component(p, "guide-box", return_all = TRUE)
@@ -273,19 +287,27 @@ create_legend_panel <- function(reefs, habs) {
         return(leg)
     }
 
-    cat("      - Preparando leg_reef...\n")
+    cat("      - Preparando leg_reef e leg_hab...\n")
     leg_reef <- get_leg(p_reef)
-    cat("      - Preparando leg_hab...\n")
     leg_hab <- get_leg(p_hab)
 
-    cat("      - Combinando legendas...\n")
-    # Combinar usando cowplot para evitar tags automáticas do patchwork
-    res <- cowplot::plot_grid(
+    cat("      - Combinando Reef | HAB (lado a lado) e Arc abaixo...\n")
+    # Dispor Reef e HAB lado a lado
+    top_row <- cowplot::plot_grid(
         leg_reef,
         leg_hab,
+        ncol = 2,
+        rel_widths = c(1, 1),
+        align = "v"
+    )
+
+    # Empilhar com Arc abaixo
+    res <- cowplot::plot_grid(
+        top_row,
         p_arch,
         ncol = 1,
-        rel_heights = c(1.2, 0.8, 1)
+        rel_heights = c(1.5, 1),
+        align = "h"
     )
 
     return(res)
@@ -324,7 +346,7 @@ create_variability_figure <- function(df, loadings_df, exp_var, scenario) {
     p_loadings <- create_loadings_panel(loadings_df, exp_var)
 
     cat("    - Criando legenda...\n")
-    p_legend <- create_legend_panel(unique(df$Reef_name), unique(df$HAB))
+    p_legend <- create_legend_panel(unique(df$Reef_name), unique(df$HAB), size_scale = 0.75)
 
     cat("    - Agrupando...\n")
     # Grid principal 2x2
@@ -359,13 +381,15 @@ for (sn in names(scenarios)) {
     fig_mag <- create_magnitude_figure(df, loadings_mag, ev_mag, sc)
     mag_path <- file.path(output_dir, sprintf("Figure_PCA_Magnitude_%s", sn))
     ggsave(paste0(mag_path, ".png"), fig_mag, width = 14, height = 10, dpi = 300)
-    ggsave(paste0(mag_path, ".pdf"), fig_mag, width = 14, height = 10)
+    # PDF disabled: Cairo fails with '#' in paths. Use PNG for now.
+    # ggsave(paste0(mag_path, ".pdf"), fig_mag, width = 14, height = 10, device = cairo_pdf)
 
     cat("  - Generating Variability figure...\n")
     fig_var <- create_variability_figure(df, loadings_var, ev_var, sc)
     var_path <- file.path(output_dir, sprintf("Figure_PCA_Variability_%s", sn))
     ggsave(paste0(var_path, ".png"), fig_var, width = 12, height = 10, dpi = 300)
-    ggsave(paste0(var_path, ".pdf"), fig_var, width = 12, height = 10)
+    # PDF disabled: Cairo fails with '#' in paths. Use PNG for now.
+    # ggsave(paste0(var_path, ".pdf"), fig_var, width = 12, height = 10, device = cairo_pdf)
 
     cat(sprintf("  ✓ %s finished\n", sn))
 }
