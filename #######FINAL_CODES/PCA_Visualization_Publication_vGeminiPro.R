@@ -1,7 +1,7 @@
 # ============================================================================
 # PCA_Visualization_Publication_vGeminiPro.R
 # Geração de figuras PCA de alta qualidade para publicação
-# Versão: Gemini Pro Refined V5 Hybrid (Footer fix: Increased Heights)
+# Versão: Gemini Pro Refined V6 (Superscript Formatting Fix)
 # ============================================================================
 
 # --- 1. PACOTES E CONFIGURAÇÃO ---
@@ -80,6 +80,14 @@ theme_publication <- theme_classic(base_size = 14.4) +
 
 # --- 3. CONFIGURAÇÃO DOS CENÁRIOS ---
 
+# Label definitions using expressions for proper formatting
+labels_mag_formatted <- list(
+    expression(paste("SST (", degree, "C)")),
+    expression(paste("DLI (mol ", m^-2, " ", d^-1, ")")),
+    expression(paste("Chl-a (mg ", m^-3, ")")),
+    "DHW>4 (freq)"
+)
+
 scenarios <- list(
     CV_02 = list(
         dir = file.path(base_dir, "#####output_local_PCA_CV_2_FINAL"),
@@ -89,7 +97,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
+        var_mag_labels = labels_mag_formatted, # Use formatted list
         var_var_cols = c("sst_cv_2", "dli_cv_2", "chl_cv_2"),
         var_var_labels = var_labels_var_default
     ),
@@ -101,7 +109,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
+        var_mag_labels = labels_mag_formatted, # Use formatted list
         var_var_cols = c("sst_cv_30", "dli_cv_30", "chl_cv_30"),
         var_var_labels = var_labels_var_default
     ),
@@ -113,7 +121,7 @@ scenarios <- list(
         pc1_mag = "PC1_Magnitude", pc2_mag = "PC2_Magnitude",
         pc1_var = "PC1_Variability", pc2_var = "PC2_Variability",
         var_mag_cols = c("sst_mean", "mean_DLI_local", "chl_mean", "prop_DHW_gt4"),
-        var_mag_labels = c("SST (deg C)", "DLI (mol m^-2 d^-1)", "Chl-a (mg m^-3)", "DHW>4 (freq)"),
+        var_mag_labels = labels_mag_formatted, # Use formatted list
         var_var_cols = c("sst_cv_all", "cv_DLI_local", "chl_cv_all"),
         var_var_labels = var_labels_var_default
     )
@@ -279,10 +287,11 @@ create_full_legend_strip <- function(reefs, habs, size_scale = 1.0) {
 create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     cat("    - Criando panels de Magnitude...\n")
 
-    b1 <- create_bubble_panel(df, scenario$var_mag_cols[1], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[1])
-    b2 <- create_bubble_panel(df, scenario$var_mag_cols[2], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[2])
-    b3 <- create_bubble_panel(df, scenario$var_mag_cols[3], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[3])
-    b4 <- create_bubble_panel(df, scenario$var_mag_cols[4], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[4])
+    # Use [[ ]] to access expression lists
+    b1 <- create_bubble_panel(df, scenario$var_mag_cols[1], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[[1]])
+    b2 <- create_bubble_panel(df, scenario$var_mag_cols[2], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[[2]])
+    b3 <- create_bubble_panel(df, scenario$var_mag_cols[3], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[[3]])
+    b4 <- create_bubble_panel(df, scenario$var_mag_cols[4], "pc1_mag", "pc2_mag", exp_var, scenario$var_mag_labels[[4]])
     load_plot <- create_loadings_panel(loadings_df, exp_var)
     leg_strip <- create_full_legend_strip(unique(df$Reef_name), unique(df$HAB))
 
@@ -305,7 +314,7 @@ create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
         NULL, # Espaçador Rígido Vertical
         leg_strip,
         ncol = 1,
-        rel_heights = c(10, 1, 2.5), # Aumentado ratio da legenda
+        rel_heights = c(10, 1, 2.5),
         align = "v"
     )
 
@@ -315,9 +324,10 @@ create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
 create_variability_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     cat("    - Criando panels de Variabilidade...\n")
 
-    b1 <- create_bubble_panel(df, scenario$var_var_cols[1], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[1])
-    b2 <- create_bubble_panel(df, scenario$var_var_cols[2], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[2])
-    b3 <- create_bubble_panel(df, scenario$var_var_cols[3], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[3])
+    # Note: Use [[ ]] just to be consistent, though var_var_labels is vector
+    b1 <- create_bubble_panel(df, scenario$var_var_cols[1], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[[1]])
+    b2 <- create_bubble_panel(df, scenario$var_var_cols[2], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[[2]])
+    b3 <- create_bubble_panel(df, scenario$var_var_cols[3], "pc1_var", "pc2_var", exp_var, scenario$var_var_labels[[3]])
     load_plot <- create_loadings_panel(loadings_df, exp_var)
     leg_strip <- create_full_legend_strip(unique(df$Reef_name), unique(df$HAB))
 
@@ -337,7 +347,7 @@ create_variability_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
         NULL, # Espaçador Rígido Vertical
         leg_strip,
         ncol = 1,
-        rel_heights = c(10, 1, 2.5), # Aumentado ratio da legenda
+        rel_heights = c(10, 1, 2.5),
         align = "v"
     )
 
@@ -365,12 +375,12 @@ for (sn in names(scenarios)) {
     cat("  - Generating Magnitude figure...\n")
     fig_mag <- create_magnitude_figure_v2(df, loadings_mag, ev_mag, sc)
     mag_path <- file.path(output_dir, sprintf("Figure_PCA_Magnitude_%s", sn))
-    ggsave(paste0(mag_path, ".png"), fig_mag, width = 14, height = 13, dpi = 300) # Fix: increased height
+    ggsave(paste0(mag_path, ".png"), fig_mag, width = 14, height = 13, dpi = 300)
 
     cat("  - Generating Variability figure...\n")
     fig_var <- create_variability_figure_v2(df, loadings_var, ev_var, sc)
     var_path <- file.path(output_dir, sprintf("Figure_PCA_Variability_%s", sn))
-    ggsave(paste0(var_path, ".png"), fig_var, width = 12, height = 13, dpi = 300) # Fix: increased height
+    ggsave(paste0(var_path, ".png"), fig_var, width = 12, height = 13, dpi = 300)
 
     cat(sprintf("  ✓ %s finished\n", sn))
 }
