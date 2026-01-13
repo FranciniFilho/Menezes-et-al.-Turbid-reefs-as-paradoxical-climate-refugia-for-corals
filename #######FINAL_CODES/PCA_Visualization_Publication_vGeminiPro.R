@@ -1,7 +1,7 @@
 # ============================================================================
 # PCA_Visualization_Publication_vGeminiPro.R
 # Geração de figuras PCA de alta qualidade para publicação
-# Versão: Gemini Pro Refined V2 (Correção de limites quadrados e espaçamento)
+# Versão: Gemini Pro Refined V3 (Correção final de overlap e clipping)
 # ============================================================================
 
 # --- 1. PACOTES E CONFIGURAÇÃO ---
@@ -157,7 +157,6 @@ calculate_explained_variance <- function(df, var_cols) {
 
 # --- 5. FUNÇÕES DE PLOTAGEM ---
 
-# Bubble Plot Individual (Modified for Square Aspect Ratio)
 create_bubble_panel <- function(df, var_col, pc1_col, pc2_col, exp_var, var_label) {
     var_values <- df[[var_col]]
     df$size_scaled <- scales::rescale(var_values, to = c(2, 8), from = range(var_values, na.rm = TRUE))
@@ -165,9 +164,8 @@ create_bubble_panel <- function(df, var_col, pc1_col, pc2_col, exp_var, var_labe
     border_color <- ifelse(df$Arch == "inner", "black", "grey60")
     border_width <- ifelse(df$Arch == "inner", 1.2, 0.4)
 
-    # Calculate symmetric limits to force square plot
     vals <- c(df[[pc1_col]], df[[pc2_col]])
-    limit <- max(abs(vals), na.rm = TRUE) * 1.1 # 10% padding
+    limit <- max(abs(vals), na.rm = TRUE) * 1.1
 
     ggplot(df, aes(x = .data[[pc1_col]], y = .data[[pc2_col]])) +
         geom_hline(yintercept = 0, color = "grey60", linewidth = 0.4) +
@@ -190,7 +188,6 @@ create_bubble_panel <- function(df, var_col, pc1_col, pc2_col, exp_var, var_labe
         coord_fixed(ratio = 1)
 }
 
-# Loadings Biplot (Modified for Square Aspect Ratio)
 create_loadings_panel <- function(loadings_df, exp_var, arrow_scale = 1.5) {
     loadings_df$xend <- loadings_df$PC1 * arrow_scale
     loadings_df$yend <- loadings_df$PC2 * arrow_scale
@@ -205,7 +202,6 @@ create_loadings_panel <- function(loadings_df, exp_var, arrow_scale = 1.5) {
         return(v_f)
     })
 
-    # Square limits for loadings
     limit <- 2.2
 
     ggplot(loadings_df) +
@@ -251,13 +247,15 @@ create_full_legend_strip <- function(reefs, habs, size_scale = 1.0) {
         legend_theme
     leg_hab <- cowplot::get_legend(p_hab)
 
+    # Manual Arc Legend
+    # FIX: Expanded ylim to 0-2 to prevent clipping of large points
     p_arch_manual <- ggplot(data.frame(x = 1, y = 1), aes(x, y)) +
         annotate("point", x = 1, y = 1, shape = 21, size = 5 * size_scale, fill = "grey70", color = "black", stroke = 1.2) +
         annotate("text", x = 1.2, y = 1, label = "Inner Arc", hjust = 0, size = 4.5 * size_scale) +
         annotate("point", x = 3.5, y = 1, shape = 21, size = 5 * size_scale, fill = "grey70", color = "grey60", stroke = 0.4) +
         annotate("text", x = 3.7, y = 1, label = "Outer Arc", hjust = 0, size = 4.5 * size_scale) +
         xlim(0.8, 6) +
-        ylim(0.8, 1.2) +
+        ylim(0, 2) +
         theme_void() +
         labs(title = "Arc") +
         theme(
@@ -290,7 +288,6 @@ create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
     load_plot <- create_loadings_panel(loadings_df, exp_var)
     leg_strip <- create_full_legend_strip(unique(df$Reef_name), unique(df$HAB))
 
-    # Layout Grid com Spacer Row (Linha 3 vazia de altura 0.1)
     layout_design <- "
     ABC
     DE#
@@ -300,8 +297,9 @@ create_magnitude_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
 
     spacer <- plot_spacer()
 
+    # FIX: Increased spacer height to 0.4 to prevent overlap
     final_plot <- b1 + b2 + b3 + b4 + load_plot + spacer + leg_strip +
-        plot_layout(design = layout_design, heights = c(1, 1, 0.15, 0.25), widths = c(1, 1, 1)) +
+        plot_layout(design = layout_design, heights = c(1, 1, 0.4, 0.3), widths = c(1, 1, 1)) +
         plot_annotation(tag_levels = "a", tag_suffix = ")")
 
     return(final_plot)
@@ -325,8 +323,9 @@ create_variability_figure_v2 <- function(df, loadings_df, exp_var, scenario) {
 
     spacer <- plot_spacer()
 
+    # FIX: Increased spacer height to 0.4 to prevent overlap
     final_plot <- b1 + b2 + b3 + load_plot + spacer + leg_strip +
-        plot_layout(design = layout_design, heights = c(1, 1, 0.15, 0.25), widths = c(1, 1)) +
+        plot_layout(design = layout_design, heights = c(1, 1, 0.4, 0.3), widths = c(1, 1)) +
         plot_annotation(tag_levels = "a", tag_suffix = ")")
 
     return(final_plot)
