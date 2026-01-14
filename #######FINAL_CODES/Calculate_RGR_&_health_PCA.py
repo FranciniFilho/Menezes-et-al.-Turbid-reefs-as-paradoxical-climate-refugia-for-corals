@@ -72,7 +72,15 @@ print(f"Scores da PCA de Saúde salvos em: {scores_path_health}")
 loadings_df_health = pd.DataFrame(pca_health.components_.T, columns=["PC1", "PC2"], index=health_cols)
 loadings_path_health = os.path.join(output_dir, "loadings_PCA_Saude.csv")
 loadings_df_health.to_csv(loadings_path_health)
-print(f"Loadings da PCA de Saúde salvos em: {loadings_path_health}")
+print(f"Coral Health PCA loadings saved to: {loadings_path_health}")
+
+# Export explained variance for R script precision
+exp_var_health_df = pd.DataFrame({
+    'PC': ['PC1', 'PC2'],
+    'explained_variance_ratio': pca_health.explained_variance_ratio_
+})
+exp_var_health_df.to_csv(os.path.join(output_dir, "explained_variance_PCA_Saude.csv"), index=False)
+
 
 # ---------------------------
 # 4. PCA DAS INTERAÇÕES LOCAIS
@@ -99,7 +107,15 @@ print(f"Scores da PCA de Interações salvos em: {scores_path_interactions}")
 loadings_df_interactions = pd.DataFrame(pca_interactions.components_.T, columns=["PC1", "PC2"], index=X_interactions.columns)
 loadings_path_interactions = os.path.join(output_dir, "loadings_PCA_Interacoes.csv")
 loadings_df_interactions.to_csv(loadings_path_interactions)
-print(f"Loadings da PCA de Interações salvos em: {loadings_path_interactions}")
+print(f"Local Interactions PCA loadings saved to: {loadings_path_interactions}")
+
+# Export explained variance for R script precision
+exp_var_int_df = pd.DataFrame({
+    'PC': ['PC1', 'PC2'],
+    'explained_variance_ratio': pca_interactions.explained_variance_ratio_
+})
+exp_var_int_df.to_csv(os.path.join(output_dir, "explained_variance_PCA_Interacoes.csv"), index=False)
+
 
 # =============================================================================
 # 4.5. FUNÇÃO PARA PLOTAGEM COMPOSTA DA PCA (ADAPTADA DO SCRIPT DE ANÁLISE LOCAL) <--- NOVA FUNÇÃO AQUI
@@ -110,26 +126,28 @@ def create_composite_pca_figure(pca_results, output_filename):
     pc1_col, pc2_col = pca_results['pc1_col'], pca_results['pc2_col']; title_suffix = pca_results['title_suffix']
     unique_reefs_plot = sorted(df_scores['REEF'].unique()); cmap_plot = plt.get_cmap('tab10'); color_map_plot = {reef: cmap_plot(i) for i, reef in enumerate(unique_reefs_plot)}
     unique_habitats_plot = sorted(df_scores['HAB'].unique()); habitat_shapes_plot = ['o', 's', '^', 'D', 'v', '<', '>']; shape_map_plot = {hab: habitat_shapes_plot[i % len(habitat_shapes_plot)] for i, hab in enumerate(unique_habitats_plot)}
-    fig, axes = plt.subplots(1, 3, figsize=(24, 7), gridspec_kw={'width_ratios': [1.2, 1, 0.8]}); fig.suptitle(f'Resumo da Análise de Componentes Principais - {title_suffix}', fontsize=20, y=1.02)
+    fig_title = f'Principal Component Analysis Summary - {title_suffix}'
+    fig, axes = plt.subplots(1, 3, figsize=(24, 7), gridspec_kw={'width_ratios': [1.2, 1, 0.8]}); fig.suptitle(fig_title, fontsize=20, y=1.02)
     ax1 = axes[0]
     sns.scatterplot(data=df_scores,x=pc1_col,y=pc2_col,hue='REEF',style='HAB',palette=color_map_plot,markers=shape_map_plot,s=100,alpha=0.8,edgecolor='k',ax=ax1,legend=False)
-    ax1.set_xlabel(f"PC1 ({explained_variance[0] * 100:.1f}%)", fontsize=14)
-    ax1.set_ylabel(f"PC2 ({explained_variance[1] * 100:.1f}%)", fontsize=14)
-    ax1.set_title("Ordenação dos Pontos", fontsize=16)
+    ax1.set_xlabel(f"PC1 ({explained_variance[0]:.1f}%)", fontsize=14)
+    ax1.set_ylabel(f"PC2 ({explained_variance[1]:.1f}%)", fontsize=14)
+    ax1.set_title("Site Scores", fontsize=16)
     ax1.grid(True, linestyle='--', alpha=0.6); ax1.axhline(0, color='grey', lw=0.5); ax1.axvline(0, color='grey', lw=0.5)
     legend_elements_color = [plt.Line2D([0], [0], marker='o', color='w', label=reef, markersize=10, markerfacecolor=color_map_plot[reef]) for reef in unique_reefs_plot]
     legend_elements_shape = [plt.Line2D([0], [0], marker=shape_map_plot[hab], color='grey', label=hab, linestyle='None', markersize=10) for hab in unique_habitats_plot]
-    fig.legend(title="Recife", handles=legend_elements_color, loc='center left', bbox_to_anchor=(0.91, 0.65)); fig.legend(title="Habitat", handles=legend_elements_shape, loc='center left', bbox_to_anchor=(0.91, 0.35))
+    fig.legend(title="Reef", handles=legend_elements_color, loc='center left', bbox_to_anchor=(0.91, 0.65)); fig.legend(title="Habitat", handles=legend_elements_shape, loc='center left', bbox_to_anchor=(0.91, 0.35))
     ax2 = axes[1]; ax2.axhline(0, color='grey', lw=0.5); ax2.axvline(0, color='grey', lw=0.5)
     for i, var in enumerate(loadings.index):
         ax2.arrow(0, 0, loadings['PC1'][i]*1.5, loadings['PC2'][i]*1.5, head_width=0.05, head_length=0.1, fc='red', ec='red')
         ax2.text(loadings['PC1'][i]*1.7, loadings['PC2'][i]*1.7, var, color='black', ha='center', va='center', fontsize=12)
-    ax2.set_xlim(-2, 2); ax2.set_ylim(-2, 2); ax2.set_xlabel("Contribuição para PC1", fontsize=14); ax2.set_ylabel("Contribuição para PC2", fontsize=14); ax2.set_title("Loadings das Variáveis", fontsize=16); ax2.set_aspect('equal', adjustable='box')
+    ax2.set_xlim(-2, 2); ax2.set_ylim(-2, 2); ax2.set_xlabel("Contribution to PC1", fontsize=14); ax2.set_ylabel("Contribution to PC2", fontsize=14); ax2.set_title("Variable Loadings", fontsize=16); ax2.set_aspect('equal', adjustable='box')
     ax3 = axes[2]; components = ['PC1', 'PC2']
-    ax3.bar(components, explained_variance, color='skyblue', edgecolor='black'); ax3.set_ylabel("Variância Explicada (%)", fontsize=14); ax3.set_title("Importância dos Componentes", fontsize=16); ax3.set_ylim(0, 100)
+    ax3.bar(components, explained_variance, color='skyblue', edgecolor='black'); ax3.set_ylabel("Explained Variance (%)", fontsize=14); ax3.set_title("Component Importance", fontsize=16); ax3.set_ylim(0, 100)
     for i, v in enumerate(explained_variance): ax3.text(i, v + 2, f"{v:.1f}%", ha='center', color='black', fontsize=12)
     fig.subplots_adjust(right=0.9); plt.savefig(output_filename, dpi=300, bbox_inches='tight'); plt.close(fig)
-    print(f"Figura composta de resumo da PCA salva em: {output_filename}")
+    print(f"Composite PCA summary figure saved to: {output_filename}")
+
 
 
 # ---------------------------
@@ -148,14 +166,16 @@ print("\nGerando figuras compostas de resumo das PCAs (Ordenação + Loadings + 
 health_pca_results = {
     'df_scores': df_scores_health, 'loadings': loadings_df_health,
     'explained_variance': pca_health.explained_variance_ratio_ * 100,
-    'pc1_col': 'HEALTH_PC1', 'pc2_col': 'HEALTH_PC2', 'title_suffix': 'Saúde dos Corais'
+    'pc1_col': 'HEALTH_PC1', 'pc2_col': 'HEALTH_PC2', 'title_suffix': 'Coral Health'
 }
+
 create_composite_pca_figure(health_pca_results, os.path.join(output_dir, "figura_composta_PCA_Saude.png"))
 interactions_pca_results = {
     'df_scores': df_scores_interactions, 'loadings': loadings_df_interactions,
     'explained_variance': pca_interactions.explained_variance_ratio_ * 100,
-    'pc1_col': 'PC1_INTERACAO', 'pc2_col': 'PC2_INTERACAO', 'title_suffix': 'Interações Locais'
+    'pc1_col': 'PC1_INTERACAO', 'pc2_col': 'PC2_INTERACAO', 'title_suffix': 'Local Interactions'
 }
+
 create_composite_pca_figure(interactions_pca_results, os.path.join(output_dir, "figura_composta_PCA_Interacoes.png"))
 
 
@@ -196,9 +216,10 @@ ax = sns.boxplot(
 )
 
 # Adiciona títulos e rótulos
-ax.set_title("Taxa de Crescimento Relativa (RGR) por Recife e Habitat", fontsize=16)
-ax.set_xlabel("Recife", fontsize=12)
-ax.set_ylabel("Taxa de Crescimento Relativa (RGR)", fontsize=12)
+ax.set_title("Relative Growth Rate (RGR) by Reef and Habitat", fontsize=16)
+ax.set_xlabel("Reef", fontsize=12)
+ax.set_ylabel("Relative Growth Rate (RGR)", fontsize=12)
+
 
 # Adiciona uma linha horizontal em y=0 para indicar crescimento zero
 ax.axhline(0, color='red', linestyle='--', linewidth=1)
