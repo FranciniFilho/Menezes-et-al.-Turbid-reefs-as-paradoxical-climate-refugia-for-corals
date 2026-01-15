@@ -370,20 +370,23 @@ def calculate_all_cvs(timeseries_dict, sites_df):
     for _, row in sites_df.iterrows():
         site_name = row['Site_name']
         arc = row['Arc']
+        hab = row.get('HAB', 'Unknown')  # Include habitat for DLI analysis
         
         if site_name not in timeseries_dict:
             continue
         
         series = timeseries_dict[site_name]
         
-        cv_7d = calculate_cv_rolling(series, 7)
+        # Changed from 7-day to 2-day to match CV_02 from other analyses
+        cv_2d = calculate_cv_rolling(series, 2)
         cv_30d = calculate_cv_rolling(series, 30)
         cv_full = calculate_cv_full(series)
         
         results.append({
             'Site_name': site_name,
             'Arc': arc,
-            'CV_7d': cv_7d,
+            'HAB': hab,
+            'CV_2d': cv_2d,
             'CV_30d': cv_30d,
             'CV_Full': cv_full
         })
@@ -576,14 +579,15 @@ def create_cv_boxplot_figure(cv_sst, cv_dli, cv_chl, output_path):
         ('DLI', cv_dli, 'mol m⁻² d⁻¹'),
         ('Chl-a', cv_chl, 'mg m⁻³')
     ]
-    bands = ['CV_7d', 'CV_30d', 'CV_Full']
-    band_labels = ['7-day Window', '30-day Window', 'Full Series']
+    # Updated: 7-day → 2-day to match CV_02 from other analyses
+    bands = ['CV_2d', 'CV_30d', 'CV_Full']
+    band_labels = ['2-day Window', '30-day Window', 'Full Series']
     
     for row, (var_name, df, unit) in enumerate(variables):
         for col, (band, band_label) in enumerate(zip(bands, band_labels)):
             ax = axes[row, col]
             
-            if len(df) == 0 or 'Arc' not in df.columns:
+            if len(df) == 0 or 'Arc' not in df.columns or band not in df.columns:
                 ax.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax.transAxes)
                 continue
             
@@ -611,6 +615,14 @@ def create_cv_boxplot_figure(cv_sst, cv_dli, cv_chl, output_path):
                 if len(vals) > 0:
                     x = np.random.normal(i + 1, 0.04, len(vals))
                     ax.scatter(x, vals, alpha=0.5, s=30, c=color, edgecolors='white', linewidth=0.5, zorder=3)
+            
+            # Y-axis auto-scaling with padding
+            all_vals = np.concatenate([inner_vals.values, outer_vals.values]) if len(inner_vals) > 0 and len(outer_vals) > 0 else (inner_vals.values if len(inner_vals) > 0 else outer_vals.values)
+            if len(all_vals) > 0:
+                ymin, ymax = np.nanmin(all_vals), np.nanmax(all_vals)
+                yrange = ymax - ymin
+                if yrange > 0:
+                    ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.15 * yrange)
             
             # Statistical test
             p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
@@ -702,6 +714,14 @@ def create_spectral_power_figure(spectral_sst, spectral_dli, spectral_chl, sites
                     x = np.random.normal(i + 1, 0.04, len(vals))
                     ax.scatter(x, vals, alpha=0.5, s=30, c=color, edgecolors='white', linewidth=0.5, zorder=3)
             
+            # Y-axis auto-scaling with padding
+            all_vals = np.concatenate([inner_vals.values, outer_vals.values]) if len(inner_vals) > 0 and len(outer_vals) > 0 else (inner_vals.values if len(inner_vals) > 0 else outer_vals.values)
+            if len(all_vals) > 0:
+                ymin, ymax = np.nanmin(all_vals), np.nanmax(all_vals)
+                yrange = ymax - ymin
+                if yrange > 0:
+                    ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.15 * yrange)
+            
             # Statistical test
             p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
             sig = format_significance(p_val)
@@ -771,6 +791,15 @@ def create_periodogram_heatmaps(spectral_sst, spectral_dli, spectral_chl, output
             # Mark key periods
             ax.axvline(7, color='red', linestyle='--', alpha=0.5, label='7-day')
             ax.axvline(30, color='green', linestyle='--', alpha=0.5, label='30-day')
+            
+            # Y-axis auto-scaling based on MEAN power in the VISIBLE range only (3-100 days)
+            if len(mean_power) > 0:
+                # Filter power to visible range (3 to 100 days) to avoid scaling by annual cycles
+                visible_mask = (common_periods >= 3) & (common_periods <= 100)
+                if visible_mask.any():
+                    ymax_mean = np.nanmax(mean_power[visible_mask])
+                    if ymax_mean > 0:
+                        ax.set_ylim(0, ymax_mean * 1.2)  # 20% padding above max in range
             
             ax.set_xlim(3, 100)
             ax.set_xlabel('Period (days)', fontsize=10)
@@ -842,6 +871,14 @@ def create_pulse_detection_figure(pulse_sst, pulse_dli, pulse_chl, output_path):
                 x = np.random.normal(i + 1, 0.04, len(vals))
                 ax.scatter(x, vals, alpha=0.5, s=40, c=color, edgecolors='white', linewidth=0.5, zorder=3)
         
+        # Y-axis auto-scaling with padding
+        all_vals = np.concatenate([inner_vals.values, outer_vals.values]) if len(inner_vals) > 0 and len(outer_vals) > 0 else (inner_vals.values if len(inner_vals) > 0 else outer_vals.values)
+        if len(all_vals) > 0:
+            ymin, ymax = np.nanmin(all_vals), np.nanmax(all_vals)
+            yrange = ymax - ymin
+            if yrange > 0:
+                ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.15 * yrange)
+        
         # Statistical test
         p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
         sig = format_significance(p_val)
@@ -859,6 +896,117 @@ def create_pulse_detection_figure(pulse_sst, pulse_dli, pulse_chl, output_path):
                    ha='left', va='top', fontsize=8, style='italic')
     
     plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    print(f"    ✓ Saved: {os.path.basename(output_path)}")
+
+def create_dli_habitat_figure(cv_dli, output_path):
+    """Create DLI comparison figure by Arc and Habitat."""
+    print("\n  Creating DLI Habitat Comparison Figure...")
+    
+    if len(cv_dli) == 0 or 'HAB' not in cv_dli.columns:
+        print("    WARNING: No DLI habitat data available. Skipping figure.")
+        return
+    
+    # Get available habitats
+    available_habs = cv_dli['HAB'].unique()
+    print(f"    Available habitats: {list(available_habs)}")
+    
+    fig, axes = plt.subplots(1, 3, figsize=(16, 6))
+    fig.suptitle('DLI Coefficient of Variation by Arc and Habitat', fontsize=16, fontweight='bold', y=1.02)
+    
+    bands = ['CV_2d', 'CV_30d', 'CV_Full']
+    band_labels = ['2-day Window', '30-day Window', 'Full Series']
+    
+    # Standard habitat colors (from Boxplot_Cover_RGR_GLM.R)
+    hab_order = ['TP', 'PA', 'RR']
+    hab_colors = {
+        'PA': '#E69F00',  # Orange/Gold
+        'RR': '#56B4E9',  # Sky Blue
+        'TP': '#009E73'   # Greenish
+    }
+    
+    for col, (band, band_label) in enumerate(zip(bands, band_labels)):
+        ax = axes[col]
+        
+        if band not in cv_dli.columns:
+            ax.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax.transAxes)
+            ax.set_title(band_label, fontsize=12, fontweight='bold')
+            continue
+        
+        # Prepare data for grouped boxplot
+        plot_data = []
+        plot_labels = []
+        plot_colors = []
+        positions = []
+        pos = 0
+        group_positions = []
+        
+        for arc in ['inner', 'outer']:
+            arc_data = cv_dli[cv_dli['Arc'] == arc]
+            arc_start = pos
+            
+            for hab in hab_order:
+                hab_data = arc_data[arc_data['HAB'] == hab][band].dropna()
+                if len(hab_data) > 0:
+                    plot_data.append(hab_data.values)
+                    plot_labels.append(f'{hab}')
+                    plot_colors.append(hab_colors.get(hab, 'gray'))
+                    positions.append(pos)
+                    pos += 1
+            
+            if pos > arc_start:
+                group_positions.append((arc_start + pos - 1) / 2)  # Center of group
+            pos += 0.5  # Gap between arcs
+        
+        if len(plot_data) == 0:
+            ax.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax.transAxes)
+            ax.set_title(band_label, fontsize=12, fontweight='bold')
+            continue
+        
+        # Create boxplot
+        bp = ax.boxplot(plot_data, positions=positions, widths=0.6, patch_artist=True)
+        
+        # Style boxes
+        for patch, color in zip(bp['boxes'], plot_colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.7)
+        
+        # Add individual points
+        for i, (data, pos_val) in enumerate(zip(plot_data, positions)):
+            x = np.random.normal(pos_val, 0.05, len(data))
+            ax.scatter(x, data, alpha=0.5, s=25, c=plot_colors[i], edgecolors='white', linewidth=0.5, zorder=3)
+        
+        # Y-axis auto-scaling
+        all_vals = np.concatenate(plot_data)
+        if len(all_vals) > 0:
+            ymin, ymax = np.nanmin(all_vals), np.nanmax(all_vals)
+            yrange = ymax - ymin
+            if yrange > 0:
+                ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.15 * yrange)
+        
+        # Set x-axis
+        ax.set_xticks(positions)
+        ax.set_xticklabels(plot_labels, fontsize=9)
+        
+        # Add arc labels below
+        if len(group_positions) >= 2:
+            ax.text(group_positions[0], ax.get_ylim()[0] - 0.15 * yrange, 'Inner Arc', 
+                   ha='center', fontsize=11, fontweight='bold', color=COLOR_INNER)
+            ax.text(group_positions[1], ax.get_ylim()[0] - 0.15 * yrange, 'Outer Arc', 
+                   ha='center', fontsize=11, fontweight='bold', color=COLOR_OUTER)
+        
+        ax.set_title(band_label, fontsize=12, fontweight='bold')
+        if col == 0:
+            ax.set_ylabel('DLI CV (%)', fontsize=11)
+    
+    # Add habitat legend
+    legend_elements = [plt.Rectangle((0, 0), 1, 1, facecolor=hab_colors[h], alpha=0.7, label=h) 
+                       for h in hab_order if h in available_habs]
+    fig.legend(handles=legend_elements, title='Habitat', loc='upper right', 
+               bbox_to_anchor=(0.98, 0.95), fontsize=10)
+    
+    plt.tight_layout(rect=[0, 0.05, 0.92, 0.95])
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"    ✓ Saved: {os.path.basename(output_path)}")
@@ -951,6 +1099,12 @@ if __name__ == "__main__":
     create_pulse_detection_figure(
         pulse_sst, pulse_dli, pulse_chl,
         os.path.join(OUTPUT_DIR, 'Fig4_Extreme_Events_Frequency.png')
+    )
+    
+    # Figure 5: DLI by Habitat (NEW)
+    create_dli_habitat_figure(
+        cv_dli,
+        os.path.join(OUTPUT_DIR, 'Fig5_DLI_Habitat_Comparison.png')
     )
     
     print("\n" + "=" * 60)
