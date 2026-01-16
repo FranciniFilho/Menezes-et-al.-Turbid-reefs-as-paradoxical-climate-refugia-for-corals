@@ -791,17 +791,20 @@ def create_periodogram_heatmaps(spectral_sst, spectral_dli, spectral_chl, output
             # Mark key periods
             ax.axvline(7, color='red', linestyle='--', alpha=0.5, label='7-day')
             ax.axvline(30, color='green', linestyle='--', alpha=0.5, label='30-day')
+            ax.axvline(365, color='purple', linestyle='--', alpha=0.5, label='Annual')
             
-            # Y-axis auto-scaling based on MEAN power in the VISIBLE range only (3-100 days)
+            # Y-axis auto-scaling based on UPPER ENVELOPE in the VISIBLE range
+            # This prevents both overflow (lines exceeding plot area) and compression
             if len(mean_power) > 0:
-                # Filter power to visible range (3 to 100 days) to avoid scaling by annual cycles
-                visible_mask = (common_periods >= 3) & (common_periods <= 100)
+                upper_envelope = mean_power + std_power
+                # Use full visible range for scaling (3 to 365 days)
+                visible_mask = (common_periods >= 3) & (common_periods <= 365)
                 if visible_mask.any():
-                    ymax_mean = np.nanmax(mean_power[visible_mask])
-                    if ymax_mean > 0:
-                        ax.set_ylim(0, ymax_mean * 1.2)  # 20% padding above max in range
+                    ymax_envelope = np.nanmax(upper_envelope[visible_mask])
+                    if ymax_envelope > 0:
+                        ax.set_ylim(0, ymax_envelope * 1.1)  # 10% padding above envelope max
             
-            ax.set_xlim(3, 100)
+            ax.set_xlim(3, 365)  # Extended to show annual cycles
             ax.set_xlabel('Period (days)', fontsize=10)
             ax.set_ylabel('Normalized Power', fontsize=10)
             

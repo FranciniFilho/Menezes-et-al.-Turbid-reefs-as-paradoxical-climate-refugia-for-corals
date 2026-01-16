@@ -647,11 +647,12 @@ def create_publication_figure(
     """
     print("\n  Creating publication figure...")
 
-    fig = plt.figure(figsize=(16, 12))
-    gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.25, top=0.92, bottom=0.08, left=0.08, right=0.95)
+    # Increased figure width to accommodate 3 Y-axes
+    fig = plt.figure(figsize=(18, 12))
+    gs = fig.add_gridspec(2, 2, hspace=0.35, wspace=0.35, top=0.92, bottom=0.08, left=0.08, right=0.92)
 
     # ===============================
-    # Panel A: Inner Arc Time Series
+    # Panel A: Inner Arc Time Series (3 Y-axes)
     # ===============================
     ax_inner = fig.add_subplot(gs[0, 0])
 
@@ -665,34 +666,26 @@ def create_publication_figure(
     dli_i_smooth = smooth_timeseries(dli_i, window_days=14)
     chl_i_smooth = smooth_timeseries(chl_i, window_days=14)
 
-    # Plot raw data (points, transparent)
-    ax_inner.scatter(sst_i.index, sst_i.values, s=8, c=COLOR_SST, alpha=0.15, label='_nolegend_', zorder=1)
-    ax_inner.scatter(dli_i.index, dli_i.values, s=8, c=COLOR_DLI, alpha=0.15, label='_nolegend_', zorder=1)
-    ax_inner.scatter(chl_i.index, chl_i.values, s=8, c=COLOR_CHL, alpha=0.15, label='_nolegend_', zorder=1)
-
-    # Plot smooth lines
-    line_sst, = ax_inner.plot(sst_i_smooth.index, sst_i_smooth.values, '-', lw=1.5, c=COLOR_SST, label='SST', zorder=2)
-    line_dli, = ax_inner.plot(dli_i_smooth.index, dli_i_smooth.values, '-', lw=1.5, c=COLOR_DLI, label='DLI', zorder=2)
-    line_chl, = ax_inner.plot(chl_i_smooth.index, chl_i_smooth.values, '-', lw=1.5, c=COLOR_CHL, label='Chl-a', zorder=2)
-
-    # Twin axes for proper scaling
-    ax_inner_dli = ax_inner.twinx()
-    ax_inner_chl = ax_inner.twinx()
-    ax_inner_chl.spines['right'].set_position(('outward', 60))
-
-    # Replot DLI and Chl on their axes
-    ax_inner_dli.plot(dli_i_smooth.index, dli_i_smooth.values, '-', lw=1.5, c=COLOR_DLI, label='_nolegend_', zorder=2)
-    ax_inner_chl.plot(chl_i_smooth.index, chl_i_smooth.values, '-', lw=1.5, c=COLOR_CHL, label='_nolegend_', zorder=2)
-
-    # Styling
+    # EIXO 1 (Esquerdo): SST
+    p1, = ax_inner.plot(sst_i_smooth.index, sst_i_smooth.values, '-', lw=1.5, c=COLOR_SST, label='SST', zorder=2)
     ax_inner.set_ylabel('SST (°C)', color=COLOR_SST, fontsize=12, fontweight='bold')
-    ax_inner_dli.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontsize=12, fontweight='bold')
-    ax_inner_chl.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontsize=12, fontweight='bold')
-
     ax_inner.tick_params(axis='y', labelcolor=COLOR_SST, labelsize=10)
+    ax_inner.grid(axis='y', linestyle='--', alpha=0.3, color=COLOR_SST)
+
+    # EIXO 2 (Direito 1): DLI
+    ax_inner_dli = ax_inner.twinx()
+    p2, = ax_inner_dli.plot(dli_i_smooth.index, dli_i_smooth.values, '-', lw=1.5, c=COLOR_DLI, label='DLI', zorder=2)
+    ax_inner_dli.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontsize=12, fontweight='bold')
     ax_inner_dli.tick_params(axis='y', labelcolor=COLOR_DLI, labelsize=10)
+
+    # EIXO 3 (Direito 2): Chl-a (deslocado 70 pontos para fora)
+    ax_inner_chl = ax_inner.twinx()
+    ax_inner_chl.spines['right'].set_position(('outward', 70))
+    p3, = ax_inner_chl.plot(chl_i_smooth.index, chl_i_smooth.values, '-', lw=1.5, c=COLOR_CHL, label='Chl-a', zorder=2)
+    ax_inner_chl.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontsize=12, fontweight='bold')
     ax_inner_chl.tick_params(axis='y', labelcolor=COLOR_CHL, labelsize=10)
 
+    # Title and x-axis
     ax_inner.set_title('Inner Arc', fontsize=14, fontweight='bold', loc='left', pad=10)
     ax_inner.set_xlim(pd.Timestamp(f'{START_YEAR}-01-01'), pd.Timestamp(f'{END_YEAR}-12-31'))
 
@@ -702,13 +695,13 @@ def create_publication_figure(
     ax_inner.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     ax_inner.tick_params(axis='x', labelsize=10)
 
-    # Legend
-    lines = [line_sst, line_dli, line_chl]
+    # LEGENDA UNIFICADA (no eixo principal, posição ajustada)
+    lines = [p1, p2, p3]
     ax_inner.legend(lines, ['SST', 'DLI', 'Chl-a'], loc='upper left', fontsize=9,
-                    framealpha=0.9, edgecolor='none')
+                    framealpha=0.95, edgecolor='none', bbox_to_anchor=(0, 1))
 
     # ===============================
-    # Panel B: Outer Arc Time Series
+    # Panel B: Outer Arc Time Series (3 Y-axes)
     # ===============================
     ax_outer = fig.add_subplot(gs[0, 1])
 
@@ -720,33 +713,26 @@ def create_publication_figure(
     dli_o_smooth = smooth_timeseries(dli_o, window_days=14)
     chl_o_smooth = smooth_timeseries(chl_o, window_days=14)
 
-    # Raw points
-    ax_outer.scatter(sst_o.index, sst_o.values, s=8, c=COLOR_SST, alpha=0.15, zorder=1)
-    ax_outer.scatter(dli_o.index, dli_o.values, s=8, c=COLOR_DLI, alpha=0.15, zorder=1)
-    ax_outer.scatter(chl_o.index, chl_o.values, s=8, c=COLOR_CHL, alpha=0.15, zorder=1)
-
-    # Smooth lines
+    # EIXO 1 (Esquerdo): SST
     ax_outer.plot(sst_o_smooth.index, sst_o_smooth.values, '-', lw=1.5, c=COLOR_SST, zorder=2)
-    ax_outer.plot(dli_o_smooth.index, dli_o_smooth.values, '-', lw=1.5, c=COLOR_DLI, zorder=2)
-    ax_outer.plot(chl_o_smooth.index, chl_o_smooth.values, '-', lw=1.5, c=COLOR_CHL, zorder=2)
-
-    # Twin axes
-    ax_outer_dli = ax_outer.twinx()
-    ax_outer_chl = ax_outer.twinx()
-    ax_outer_chl.spines['right'].set_position(('outward', 60))
-
-    ax_outer_dli.plot(dli_o_smooth.index, dli_o_smooth.values, '-', lw=1.5, c=COLOR_DLI, zorder=2)
-    ax_outer_chl.plot(chl_o_smooth.index, chl_o_smooth.values, '-', lw=1.5, c=COLOR_CHL, zorder=2)
-
-    # Styling
     ax_outer.set_ylabel('SST (°C)', color=COLOR_SST, fontsize=12, fontweight='bold')
-    ax_outer_dli.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontsize=12, fontweight='bold')
-    ax_outer_chl.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontsize=12, fontweight='bold')
-
     ax_outer.tick_params(axis='y', labelcolor=COLOR_SST, labelsize=10)
+    ax_outer.grid(axis='y', linestyle='--', alpha=0.3, color=COLOR_SST)
+
+    # EIXO 2 (Direito 1): DLI
+    ax_outer_dli = ax_outer.twinx()
+    ax_outer_dli.plot(dli_o_smooth.index, dli_o_smooth.values, '-', lw=1.5, c=COLOR_DLI, zorder=2)
+    ax_outer_dli.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontsize=12, fontweight='bold')
     ax_outer_dli.tick_params(axis='y', labelcolor=COLOR_DLI, labelsize=10)
+
+    # EIXO 3 (Direito 2): Chl-a (deslocado 70 pontos para fora)
+    ax_outer_chl = ax_outer.twinx()
+    ax_outer_chl.spines['right'].set_position(('outward', 70))
+    ax_outer_chl.plot(chl_o_smooth.index, chl_o_smooth.values, '-', lw=1.5, c=COLOR_CHL, zorder=2)
+    ax_outer_chl.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontsize=12, fontweight='bold')
     ax_outer_chl.tick_params(axis='y', labelcolor=COLOR_CHL, labelsize=10)
 
+    # Title and x-axis
     ax_outer.set_title('Outer Arc', fontsize=14, fontweight='bold', loc='left', pad=10)
     ax_outer.set_xlim(pd.Timestamp(f'{START_YEAR}-01-01'), pd.Timestamp(f'{END_YEAR}-12-31'))
 
