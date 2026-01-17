@@ -242,11 +242,9 @@ if __name__ == "__main__":
     # 2. Aggregation and CCF
     arc_results = []
     stl_results = []
+    arc_data = {}  # Store aggregated data for each arc
     
-    fig_main = plt.figure(figsize=(16, 22))
-    gs = fig_main.add_gridspec(5, 2, height_ratios=[1.5, 1.5, 1, 1, 1], hspace=0.35, wspace=0.3)
-    
-    for i, arc in enumerate(['inner', 'outer']):
+    for arc in ['inner', 'outer']:
         arc_sites = sites_df[sites_df['Arc'] == arc]['Site_name'].tolist()
         
         # Aggregate (Mean Daily)
@@ -254,36 +252,20 @@ if __name__ == "__main__":
         dli_arc = pd.concat([dli_ts[s] for s in arc_sites if s in dli_ts], axis=1).mean(axis=1)
         chl_arc = pd.concat([chl_ts[s] for s in arc_sites if s in chl_ts], axis=1).mean(axis=1)
         
-        # Smooth for Plotting
-        sst_smooth = sst_arc.rolling(14, center=True).mean()
-        dli_smooth = dli_arc.rolling(14, center=True).mean()
-        chl_smooth = chl_arc.rolling(14, center=True).mean()
+        arc_data[arc] = {'sst': sst_arc, 'dli': dli_arc, 'chl': chl_arc}
         
-        # Plot Time Series (A & B)
-        ax = fig_main.add_subplot(gs[i, :])
-        ax.plot(sst_smooth.index, sst_smooth.values, color=COLOR_SST, lw=2, label='SST')
-        ax.set_ylabel('SST (°C)', color=COLOR_SST, fontweight='bold')
-        
-        ax2 = ax.twinx()
-        ax2.plot(dli_smooth.index, dli_smooth.values, color=COLOR_DLI, lw=1.5, alpha=0.8, label='DLI')
-        ax2.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontweight='bold')
-        
-        ax3 = ax.twinx()
-        ax3.spines['right'].set_position(('outward', 60))
-        ax3.plot(chl_smooth.index, chl_smooth.values, color=COLOR_CHL, lw=1.5, alpha=0.8, label='Chl-a')
-        ax3.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontweight='bold')
-        
-        ax.set_title(f'Panel {chr(65+i)}: {arc.capitalize()} Arc Combined Dynamics (14-day smooth)', fontweight='bold', loc='left')
-        
-        # CCF Analysis (DLI -> CHL)
-        ccf_dli_chl = calculate_cross_correlation_full(dli_arc, chl_arc)
-        if ccf_dli_chl:
-            arc_results.append({**ccf_dli_chl, 'Arc': arc, 'Pair': 'DLI_CHL'})
-        
-        # CCF Analysis (SST -> DLI)
+        # CCF Analysis (all 3 pairs)
         ccf_sst_dli = calculate_cross_correlation_full(sst_arc, dli_arc)
         if ccf_sst_dli:
             arc_results.append({**ccf_sst_dli, 'Arc': arc, 'Pair': 'SST_DLI'})
+        
+        ccf_sst_chl = calculate_cross_correlation_full(sst_arc, chl_arc)
+        if ccf_sst_chl:
+            arc_results.append({**ccf_sst_chl, 'Arc': arc, 'Pair': 'SST_CHL'})
+        
+        ccf_dli_chl = calculate_cross_correlation_full(dli_arc, chl_arc)
+        if ccf_dli_chl:
+            arc_results.append({**ccf_dli_chl, 'Arc': arc, 'Pair': 'DLI_CHL'})
         
         # STL Analysis
         stl = calculate_pulse_synchrony_stl(sst_arc, dli_arc, chl_arc)
@@ -295,56 +277,103 @@ if __name__ == "__main__":
                 'Pulse_Corr_DLI_CHL': stl['Pulse_Corr_DLI_CHL']
             })
 
-    # C: Pearson Boxplots
-    ax_c = fig_main.add_subplot(gs[2, 0])
-    inner_p = pearson_df[pearson_df['Arc'] == 'inner']['Corr_DLI_CHL']
-    outer_p = pearson_df[pearson_df['Arc'] == 'outer']['Corr_DLI_CHL']
-    ax_c.boxplot([inner_p, outer_p], labels=['Inner', 'Outer'], patch_artist=True)
-    ax_c.set_title('Panel C: DLI vs Chl-a Synchrony (Pearson)', fontweight='bold', loc='left')
-    ax_c.set_ylabel('Correlation Coefficient')
+    # ============================================
+    # Figure: Complete 5x3 Layout
+    # ============================================
+    fig_main = plt.figure(figsize=(18, 24))
+    gs = fig_main.add_gridspec(5, 3, height_ratios=[1.2, 1.2, 1, 1, 0.8], hspace=0.35, wspace=0.25)
     
-    # D: CCF Plot (SST -> DLI)
-    ax_d = fig_main.add_subplot(gs[2, 1])
-    for res in [r for r in arc_results if r['Pair'] == 'SST_DLI']:
-        color = COLOR_INNER if res['Arc'] == 'inner' else COLOR_OUTER
-        ax_d.plot(res['lags'], res['correlations'], color=color, lw=2, label=f"{res['Arc'].capitalize()} (Lag: {res['optimal_lag']}d)")
-    ax_d.axvline(0, color='black', alpha=0.3, ls='--')
-    ax_d.axhline(0, color='gray', alpha=0.3)
-    ax_d.legend(fontsize=9)
-    ax_d.set_title('Panel D: Cross-Correlation (SST → DLI)', fontweight='bold', loc='left')
-    ax_d.set_xlabel('Lag (days)')
-    ax_d.set_ylabel('Correlation')
+    # Row 1-2: Time Series (A & B) - Full width
+    for i, arc in enumerate(['inner', 'outer']):
+        ax = fig_main.add_subplot(gs[i, :])
+        sst_smooth = arc_data[arc]['sst'].rolling(14, center=True).mean()
+        dli_smooth = arc_data[arc]['dli'].rolling(14, center=True).mean()
+        chl_smooth = arc_data[arc]['chl'].rolling(14, center=True).mean()
+        
+        ax.plot(sst_smooth.index, sst_smooth.values, color=COLOR_SST, lw=2, label='SST')
+        ax.set_ylabel('SST (°C)', color=COLOR_SST, fontweight='bold')
+        ax.tick_params(axis='y', labelcolor=COLOR_SST)
+        
+        ax2 = ax.twinx()
+        ax2.plot(dli_smooth.index, dli_smooth.values, color=COLOR_DLI, lw=1.5, alpha=0.8, label='DLI')
+        ax2.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontweight='bold')
+        ax2.tick_params(axis='y', labelcolor=COLOR_DLI)
+        
+        ax3 = ax.twinx()
+        ax3.spines['right'].set_position(('outward', 60))
+        ax3.plot(chl_smooth.index, chl_smooth.values, color=COLOR_CHL, lw=1.5, alpha=0.8, label='Chl-a')
+        ax3.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontweight='bold')
+        ax3.tick_params(axis='y', labelcolor=COLOR_CHL)
+        
+        ax.set_title(f'Panel {chr(65+i)}: {arc.capitalize()} Arc Combined Dynamics (14-day smooth)', fontweight='bold', loc='left', fontsize=11)
     
-    # E: CCF Plot (DLI -> Chl-a)
-    ax_e = fig_main.add_subplot(gs[3, 0])
-    for res in [r for r in arc_results if r['Pair'] == 'DLI_CHL']:
-        color = COLOR_INNER if res['Arc'] == 'inner' else COLOR_OUTER
-        ax_e.plot(res['lags'], res['correlations'], color=color, lw=2, label=f"{res['Arc'].capitalize()} (Lag: {res['optimal_lag']}d)")
-    ax_e.axvline(0, color='black', alpha=0.3, ls='--')
-    ax_e.axhline(0, color='gray', alpha=0.3)
-    ax_e.legend(fontsize=9)
-    ax_e.set_title('Panel E: Cross-Correlation (DLI → Chl-a)', fontweight='bold', loc='left')
-    ax_e.set_xlabel('Lag (days)')
-    ax_e.set_ylabel('Correlation')
+    # Row 3: Pearson Boxplots (C, D, E)
+    pearson_pairs = [('Corr_SST_DLI', 'SST↔DLI'), ('Corr_SST_CHL', 'SST↔Chl'), ('Corr_DLI_CHL', 'DLI↔Chl')]
+    for j, (col, label) in enumerate(pearson_pairs):
+        ax = fig_main.add_subplot(gs[2, j])
+        inner_vals = pearson_df[pearson_df['Arc'] == 'inner'][col].dropna()
+        outer_vals = pearson_df[pearson_df['Arc'] == 'outer'][col].dropna()
+        
+        bp = ax.boxplot([inner_vals, outer_vals], labels=['Inner', 'Outer'], patch_artist=True)
+        bp['boxes'][0].set_facecolor(COLOR_INNER)
+        bp['boxes'][1].set_facecolor(COLOR_OUTER)
+        for box in bp['boxes']:
+            box.set_alpha(0.7)
+        
+        # Mann-Whitney test
+        p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
+        ax.text(0.95, 0.95, p_str, transform=ax.transAxes, ha='right', va='top', fontsize=9, 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+        ax.axhline(0, color='gray', alpha=0.3, ls='--')
+        ax.set_title(f'Panel {chr(67+j)}: {label} (Pearson)', fontweight='bold', loc='left', fontsize=10)
+        ax.set_ylabel('Correlation')
     
-    # F: STL Pulse Synchrony Comparison
-    ax_f = fig_main.add_subplot(gs[3, 1])
+    # Row 4: Cross-Correlation (F, G, H)
+    ccf_pairs = [('SST_DLI', 'SST → DLI'), ('SST_CHL', 'SST → Chl'), ('DLI_CHL', 'DLI → Chl')]
+    for j, (pair_key, label) in enumerate(ccf_pairs):
+        ax = fig_main.add_subplot(gs[3, j])
+        for res in [r for r in arc_results if r['Pair'] == pair_key]:
+            color = COLOR_INNER if res['Arc'] == 'inner' else COLOR_OUTER
+            ax.plot(res['lags'], res['correlations'], color=color, lw=2, 
+                   label=f"{res['Arc'].capitalize()} (Lag: {res['optimal_lag']}d)")
+        ax.axvline(0, color='black', alpha=0.3, ls='--')
+        ax.axhline(0, color='gray', alpha=0.3)
+        ax.legend(fontsize=8, loc='best')
+        ax.set_title(f'Panel {chr(70+j)}: CCF ({label})', fontweight='bold', loc='left', fontsize=10)
+        ax.set_xlabel('Lag (days)')
+        ax.set_ylabel('Correlation')
+    
+    # Row 5: STL Pulse Bar Chart (I) - Full width
+    ax_i = fig_main.add_subplot(gs[4, :])
     if stl_results:
         stl_df = pd.DataFrame(stl_results)
         x = np.arange(len(stl_df))
         width = 0.25
-        ax_f.bar(x - width, stl_df['Pulse_Corr_SST_DLI'], width, label='SST↔DLI', color=COLOR_SST, alpha=0.8)
-        ax_f.bar(x, stl_df['Pulse_Corr_SST_CHL'], width, label='SST↔Chl', color='#888888', alpha=0.8)
-        ax_f.bar(x + width, stl_df['Pulse_Corr_DLI_CHL'], width, label='DLI↔Chl', color=COLOR_DLI, alpha=0.8)
-        ax_f.set_xticks(x)
-        ax_f.set_xticklabels(stl_df['Arc'].str.capitalize())
-        ax_f.legend(fontsize=9)
-        ax_f.axhline(0, color='black', alpha=0.3)
-    ax_f.set_title('Panel F: STL Residual (Pulse) Correlations', fontweight='bold', loc='left')
-    ax_f.set_ylabel('Residual Correlation')
+        
+        bars1 = ax_i.bar(x - width, stl_df['Pulse_Corr_SST_DLI'], width, label='SST↔DLI', color=COLOR_SST, alpha=0.85)
+        bars2 = ax_i.bar(x, stl_df['Pulse_Corr_SST_CHL'], width, label='SST↔Chl', color='#888888', alpha=0.85)
+        bars3 = ax_i.bar(x + width, stl_df['Pulse_Corr_DLI_CHL'], width, label='DLI↔Chl', color=COLOR_CHL, alpha=0.85)
+        
+        # Add value labels on bars
+        for bars in [bars1, bars2, bars3]:
+            for bar in bars:
+                height = bar.get_height()
+                ax_i.annotate(f'{height:.2f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                             xytext=(0, 3 if height >= 0 else -10), textcoords='offset points',
+                             ha='center', va='bottom' if height >= 0 else 'top', fontsize=8)
+        
+        ax_i.set_xticks(x)
+        ax_i.set_xticklabels(stl_df['Arc'].str.capitalize(), fontsize=11)
+        ax_i.legend(fontsize=10, loc='upper right')
+        ax_i.axhline(0, color='black', alpha=0.5)
+    ax_i.set_title('Panel I: STL Residual (Pulse) Correlations', fontweight='bold', loc='left', fontsize=11)
+    ax_i.set_ylabel('Residual Correlation', fontsize=10)
+    ax_i.set_ylim(-1, 1)
     
     plt.tight_layout()
-    fig_main.savefig(os.path.join(OUTPUT_DIR, 'Fig_Main_Temporal_Synchrony.png'), dpi=300)
+    fig_main.savefig(os.path.join(OUTPUT_DIR, 'Fig_Main_Temporal_Synchrony.png'), dpi=300, bbox_inches='tight')
+    plt.close()
     
     pd.DataFrame(arc_results).to_csv(os.path.join(OUTPUT_DIR, 'Cross_Correlation_Results.csv'), index=False)
     pd.DataFrame(stl_results).to_csv(os.path.join(OUTPUT_DIR, 'STL_Pulse_Synchrony.csv'), index=False)
