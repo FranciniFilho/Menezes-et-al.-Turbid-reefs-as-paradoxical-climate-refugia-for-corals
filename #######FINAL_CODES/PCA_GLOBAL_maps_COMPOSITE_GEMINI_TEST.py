@@ -331,7 +331,31 @@ def create_magnitude_map(data_dict, output_path, mask_shallow_data, bathy_data):
                             cmap=cmap_obj, shading='auto', vmin=vmin, vmax=vmax)
         
         if gdf_land is not None:
-            gdf_land.plot(ax=ax, facecolor='#D2B48C', edgecolor='black', linewidth=0.5, zorder=3)
+            gdf_land.plot(ax=ax, facecolor='#D2B48C', edgecolor='black', linewidth=0.5, zorder=10)
+        
+        # === PROTECTED AREAS (marine portion only) ===
+        try:
+            if os.path.exists(protected_areas_shp) and gdf_land is not None:
+                gdf_protected = gpd.read_file(protected_areas_shp).to_crs("EPSG:4326")
+                # Clip to bounding box first
+                bbox = box(lon_min, lat_min, lon_max, lat_max)
+                bbox_gdf = gpd.GeoDataFrame({'geometry': [bbox]}, crs="EPSG:4326")
+                gdf_protected_clipped = gpd.overlay(gdf_protected, bbox_gdf, how='intersection')
+                # Extract only marine portion (remove land overlap)
+                protected_marine = gpd.overlay(gdf_protected_clipped, gdf_land, how='difference')
+                if not protected_marine.empty:
+                    protected_marine.boundary.plot(ax=ax, edgecolor='darkblue', linewidth=1.2, zorder=5)
+        except Exception as e:
+            logging.warning(f"Não foi possível plotar áreas protegidas: {e}")
+        
+        # === REEFS ===
+        try:
+            if os.path.exists(reefs_shp):
+                gdf_reefs = gpd.read_file(reefs_shp).to_crs("EPSG:4326")
+                gdf_reefs.boundary.plot(ax=ax, edgecolor='purple', linewidth=0.8, zorder=15)
+        except Exception as e:
+            logging.warning(f"Não foi possível plotar recifes: {e}")
+        
         if bathy_data is not None:
             ax.contour(bathy_data.lon, bathy_data.lat, bathy_data, levels=[-200, -50],
                        colors=['dimgray', 'gray'], linewidths=[0.7, 0.5], linestyles=['--', ':'], zorder=2)
@@ -413,7 +437,29 @@ def create_variability_map(cv_data_dict, output_path, mask_shallow_data, bathy_d
                                     cmap=cmap_obj, shading='auto', vmin=vmin, vmax=vmax)
                 
                 if gdf_land is not None:
-                    gdf_land.plot(ax=ax, facecolor='#D2B48C', edgecolor='black', linewidth=0.5, zorder=3)
+                    gdf_land.plot(ax=ax, facecolor='#D2B48C', edgecolor='black', linewidth=0.5, zorder=10)
+                
+                # === PROTECTED AREAS (marine portion only) ===
+                try:
+                    if os.path.exists(protected_areas_shp) and gdf_land is not None:
+                        gdf_protected = gpd.read_file(protected_areas_shp).to_crs("EPSG:4326")
+                        bbox = box(lon_min, lat_min, lon_max, lat_max)
+                        bbox_gdf = gpd.GeoDataFrame({'geometry': [bbox]}, crs="EPSG:4326")
+                        gdf_protected_clipped = gpd.overlay(gdf_protected, bbox_gdf, how='intersection')
+                        protected_marine = gpd.overlay(gdf_protected_clipped, gdf_land, how='difference')
+                        if not protected_marine.empty:
+                            protected_marine.boundary.plot(ax=ax, edgecolor='darkblue', linewidth=1.0, zorder=5)
+                except Exception as e:
+                    logging.warning(f"Não foi possível plotar áreas protegidas: {e}")
+                
+                # === REEFS ===
+                try:
+                    if os.path.exists(reefs_shp):
+                        gdf_reefs = gpd.read_file(reefs_shp).to_crs("EPSG:4326")
+                        gdf_reefs.boundary.plot(ax=ax, edgecolor='purple', linewidth=0.6, zorder=15)
+                except Exception as e:
+                    logging.warning(f"Não foi possível plotar recifes: {e}")
+                
                 if bathy_data is not None:
                     ax.contour(bathy_data.lon, bathy_data.lat, bathy_data, levels=[-200, -50],
                                colors=['dimgray', 'gray'], linewidths=[0.7, 0.5], linestyles=['--', ':'], zorder=2)

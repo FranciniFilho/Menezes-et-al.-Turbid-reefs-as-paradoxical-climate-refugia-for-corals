@@ -1,0 +1,94 @@
+2026-01-17 22:18:04,501 | INFO     | Starting Smart MODIS/CRW Database Update v2.0
+2026-01-17 22:18:04,566 | INFO     | === Processing Product: MODIS_CHL ===
+2026-01-17 22:18:20,122 | INFO     | Auditing 42244 files in K:\remote sensing\MODIS_DATA_FULL...
+2026-01-17 23:46:59,212 | WARNING  | [MODIS_CHL] AQUA_MODIS.20120206.L3m.DAY.CHL.chlor_a.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-17 23:48:50,389 | INFO     | Checking remote availability for 117 missing dates...
+2026-01-17 23:48:51,758 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:51,775 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 9
+2026-01-17 23:48:53,805 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,811 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,817 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,815 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,821 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,846 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,848 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,883 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,888 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,950 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-17 23:48:53,982 | INFO     | Found 117 gaps available on server.
+2026-01-17 23:48:54,003 | INFO     | Starting download of 117 files...
+2026-01-17 23:49:17,918 | INFO     | === Processing Product: MODIS_SST ===
+2026-01-17 23:49:21,009 | INFO     | Auditing 42244 files in K:\remote sensing\MODIS_DATA_FULL...
+2026-01-18 01:25:31,931 | INFO     | Checking remote availability for 143 missing dates...
+2026-01-18 01:25:53,500 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:53,519 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:54,454 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:55,175 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:55,218 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:56,058 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:56,218 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:56,741 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:25:59,515 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:26:02,467 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 01:26:02,713 | INFO     | Found 141 gaps available on server.
+2026-01-18 01:26:02,825 | INFO     | Starting download of 141 files...
+2026-01-18 01:27:33,115 | INFO     | === Processing Product: MODIS_KD490 ===
+2026-01-18 01:27:38,863 | INFO     | Auditing 42244 files in K:\remote sensing\MODIS_DATA_FULL...
+2026-01-18 02:44:00,409 | INFO     | Checking remote availability for 176 missing dates...
+2026-01-18 02:44:23,321 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:23,337 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:23,385 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:23,600 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:24,327 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:25,502 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:26,169 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:27,372 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:30,217 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:32,325 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 02:44:32,348 | INFO     | Found 176 gaps available on server.
+2026-01-18 02:44:32,357 | INFO     | Starting download of 176 files...
+2026-01-18 02:46:38,570 | INFO     | === Processing Product: MODIS_PAR ===
+2026-01-18 02:46:44,091 | INFO     | Auditing 42244 files in K:\remote sensing\MODIS_DATA_FULL...
+2026-01-18 02:54:07,273 | WARNING  | [MODIS_PAR] AQUA_MODIS.20040623.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 02:54:08,777 | WARNING  | [MODIS_PAR] AQUA_MODIS.20040627.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 02:54:52,464 | WARNING  | [MODIS_PAR] AQUA_MODIS.20040919.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:02:24,457 | WARNING  | [MODIS_PAR] AQUA_MODIS.20070208.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:03:51,231 | WARNING  | [MODIS_PAR] AQUA_MODIS.20070724.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:07:30,498 | WARNING  | [MODIS_PAR] AQUA_MODIS.20080829.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:07:43,284 | WARNING  | [MODIS_PAR] AQUA_MODIS.20080924.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:11:33,004 | WARNING  | [MODIS_PAR] AQUA_MODIS.20091129.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:17:08,267 | WARNING  | [MODIS_PAR] AQUA_MODIS.20110922.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:26:10,854 | WARNING  | [MODIS_PAR] AQUA_MODIS.20140727.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:30:36,379 | WARNING  | [MODIS_PAR] AQUA_MODIS.20151227.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:32:36,734 | WARNING  | [MODIS_PAR] AQUA_MODIS.20161206.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 03:38:07,155 | WARNING  | [MODIS_PAR] AQUA_MODIS.20180907.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 04:05:16,316 | INFO     | Checking remote availability for 189 missing dates...
+2026-01-18 04:05:21,976 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,015 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,054 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,062 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,066 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,073 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,090 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,136 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,140 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,185 | WARNING  | Connection pool is full, discarding connection: oceandata.sci.gsfc.nasa.gov. Connection pool size: 10
+2026-01-18 04:05:22,228 | INFO     | Found 189 gaps available on server.
+2026-01-18 04:05:22,241 | INFO     | Starting download of 189 files...
+2026-01-18 04:05:59,643 | INFO     | === Processing Product: CRW_DHW ===
+2026-01-18 04:06:01,642 | INFO     | Auditing 14892 files in K:\remote sensing\CRW_DHW_FULL...
+2026-01-18 07:26:40,666 | INFO     | Checking remote availability for 83 missing dates...
+2026-01-18 07:26:45,504 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,596 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,606 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,613 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,774 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,806 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,808 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:45,878 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:46,201 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:46,210 | WARNING  | Connection pool is full, discarding connection: www.star.nesdis.noaa.gov. Connection pool size: 10
+2026-01-18 07:26:46,235 | INFO     | Found 0 gaps available on server.
+2026-01-18 07:26:46,235 | INFO     | === Processing Product: CRW_SST ===
+2026-01-18 07:26:48,593 | INFO     | Auditing 14879 files in K:\remote sensing\CRW_SST_FULL...
+2026-01-18 08:07:41,826 | WARNING  | [CRW_SST] coraltemp_v3.1_19940316.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.

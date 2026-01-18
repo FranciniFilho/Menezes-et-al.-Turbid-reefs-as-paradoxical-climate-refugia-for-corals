@@ -1,5 +1,0 @@
-2026-01-16 22:58:06,251 - ERROR - Error calculating DLI: [Errno -101] NetCDF: HDF error: 'K:\\remote sensing\\MODIS_DATA_FULL\\AQUA_MODIS.20040623.L3m.DAY.PAR.par.4km.nc'
-2026-01-16 22:58:09,364 - ERROR - Error calculating DLI: [Errno -101] NetCDF: HDF error: 'K:\\remote sensing\\MODIS_DATA_FULL\\AQUA_MODIS.20040627.L3m.DAY.PAR.par.4km.nc'
-2026-01-16 22:59:14,488 - ERROR - Error calculating DLI: [Errno -101] NetCDF: HDF error: 'K:\\remote sensing\\MODIS_DATA_FULL\\AQUA_MODIS.20040919.L3m.DAY.PAR.par.4km.nc'
-2026-01-16 23:08:44,625 - ERROR - Error calculating DLI: [Errno -101] NetCDF: HDF error: 'K:\\remote sensing\\MODIS_DATA_FULL\\AQUA_MODIS.20070208.L3m.DAY.PAR.par.4km.nc'
-2026-01-16 23:10:25,719 - ERROR - Error calculating DLI: [Errno -101] NetCDF: HDF error: 'K:\\remote sensing\\MODIS_DATA_FULL\\AQUA_MODIS.20070724.L3m.DAY.PAR.par.4km.nc'
