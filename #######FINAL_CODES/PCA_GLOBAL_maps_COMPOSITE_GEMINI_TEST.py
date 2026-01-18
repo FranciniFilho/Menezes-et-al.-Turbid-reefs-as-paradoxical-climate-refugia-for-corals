@@ -35,6 +35,7 @@ from dask.distributed import Client
 import dask
 import psutil
 import gc
+import pickle
 
 # --- Imports adicionais para figuras de alta qualidade ---
 import matplotlib.gridspec as gridspec
@@ -341,7 +342,7 @@ def create_magnitude_map(data_dict, output_path, mask_shallow_data, bathy_data):
         cbar.set_label(unit, fontsize=8)
         cbar.ax.tick_params(labelsize=7)
         
-        ax.text(-0.15, 1.1, f'({PANEL_LABELS_MAG[i]})', transform=ax.transAxes, fontsize=11, fontweight='bold', va='top')
+        ax.text(-0.15, 1.15, f'({PANEL_LABELS_MAG[i]})', transform=ax.transAxes, fontsize=11, fontweight='bold', va='top')
         
         ax.set_xlim(lon_min, lon_max)
         ax.set_ylim(lat_min, lat_max)
@@ -423,7 +424,7 @@ def create_variability_map(cv_data_dict, output_path, mask_shallow_data, bathy_d
                 cbar.set_label('CV (%)', fontsize=7)
                 cbar.ax.tick_params(labelsize=6)
             
-            ax.text(-0.12, 1.08, f'({PANEL_LABELS_VAR[panel_idx]})', transform=ax.transAxes, 
+            ax.text(-0.12, 1.14, f'({PANEL_LABELS_VAR[panel_idx]})', transform=ax.transAxes, 
                     fontsize=10, fontweight='bold', va='top')
             
             if row_idx == 0:
@@ -491,15 +492,49 @@ dli_all = load_and_calculate_dli_series(kd490_pattern, par_pattern, light_period
 print("\n--- 3. Calculando Métricas Espaciais ---")
 computed_results = {}
 
+# === CACHE CONFIGURATION ===
+CACHE_DIR = os.path.join(output_dir, "metrics_cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def load_cached_metric(key):
+    cache_file = os.path.join(CACHE_DIR, f"{key}.pkl")
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'rb') as f:
+                print(f"      [CACHE HIT] Carregando {key} do cache...")
+                return pickle.load(f)
+        except Exception as e:
+            print(f"      [CACHE ERROR] Falha ao carregar {key}: {e}")
+    return None
+
+def save_cached_metric(key, data):
+    cache_file = os.path.join(CACHE_DIR, f"{key}.pkl")
+    try:
+        with open(cache_file, 'wb') as f:
+            pickle.dump(data, f)
+        print(f"      [CACHE SAVE] {key} salvo no cache.")
+    except Exception as e:
+        print(f"      [CACHE ERROR] Falha ao salvar {key}: {e}")
+
+def get_or_compute_metric(key, compute_func):
+    cached = load_cached_metric(key)
+    if cached is not None:
+        return cached
+    print(f"      Computando {key}...")
+    result = compute_func()
+    save_cached_metric(key, result)
+    return result
+
+
 # === MAGNITUDE ===
 print("  Calculando métricas de MAGNITUDE...")
-computed_results['mean_SST'] = sst_all.mean('time', skipna=True).compute()
+computed_results['mean_SST'] = get_or_compute_metric('mean_SST', lambda: sst_all.mean('time', skipna=True).compute())
 if chl_all is not None:
-    computed_results['mean_CHL'] = chl_all.mean('time', skipna=True).compute()
+    computed_results['mean_CHL'] = get_or_compute_metric('mean_CHL', lambda: chl_all.mean('time', skipna=True).compute())
 if dli_all is not None:
-    computed_results['mean_DLI'] = dli_all.mean('time', skipna=True).compute()
+    computed_results['mean_DLI'] = get_or_compute_metric('mean_DLI', lambda: dli_all.mean('time', skipna=True).compute())
 if dhw_all is not None:
-    computed_results['prop_DHW_gt4'] = (dhw_all > 4).mean('time', skipna=True).compute() * 100
+    computed_results['prop_DHW_gt4'] = get_or_compute_metric('prop_DHW_gt4', lambda: (dhw_all > 4).mean('time', skipna=True).compute() * 100)
 
 # === VARIABILIDADE (3 janelas: 2, 30, all) ===
 print("  Calculando métricas de VARIABILIDADE...")
@@ -509,8 +544,7 @@ windows_to_compute = [2, 30, 'all']
 print("    - SST CV para todas as janelas...")
 for window in windows_to_compute:
     key = f'cv_SST_{window}'
-    print(f"      Computando {key}...")
-    computed_results[key] = calculate_cv_map(sst_all, window)
+    computed_results[key] = get_or_compute_metric(key, lambda w=window: calculate_cv_map(sst_all, w))
     gc.collect()
 
 # DLI CV
@@ -518,8 +552,7 @@ if dli_all is not None:
     print("    - DLI CV para todas as janelas...")
     for window in windows_to_compute:
         key = f'cv_DLI_{window}'
-        print(f"      Computando {key}...")
-        computed_results[key] = calculate_cv_map(dli_all, window)
+        computed_results[key] = get_or_compute_metric(key, lambda w=window: calculate_cv_map(dli_all, w))
         gc.collect()
 
 # CHL CV
@@ -527,8 +560,7 @@ if chl_all is not None:
     print("    - CHL CV para todas as janelas...")
     for window in windows_to_compute:
         key = f'cv_CHL_{window}'
-        print(f"      Computando {key}...")
-        computed_results[key] = calculate_cv_map(chl_all, window)
+        computed_results[key] = get_or_compute_metric(key, lambda w=window: calculate_cv_map(chl_all, w))
         gc.collect()
 
 print("  Cálculo de métricas concluído!")
