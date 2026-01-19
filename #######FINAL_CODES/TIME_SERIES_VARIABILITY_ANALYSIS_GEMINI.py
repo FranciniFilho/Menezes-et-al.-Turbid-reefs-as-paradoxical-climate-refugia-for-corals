@@ -832,12 +832,12 @@ def create_spectral_power_figure(spectral_sst, spectral_dli, spectral_chl, sites
                 ymin, ymax = np.nanmin(all_vals), np.nanmax(all_vals)
                 yrange = ymax - ymin
                 if yrange > 0:
-                    ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.15 * yrange)
+                    ax.set_ylim(ymin - 0.1 * yrange, ymax + 0.20 * yrange)
             
             # Statistical test
             p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
             sig = format_significance(p_val)
-            ax.text(0.95, 0.95, f'{p_str}\n{sig}', transform=ax.transAxes,
+            ax.text(0.95, 0.98, f'{p_str}\n{sig}', transform=ax.transAxes,
                    ha='right', va='top', fontsize=9,
                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
             

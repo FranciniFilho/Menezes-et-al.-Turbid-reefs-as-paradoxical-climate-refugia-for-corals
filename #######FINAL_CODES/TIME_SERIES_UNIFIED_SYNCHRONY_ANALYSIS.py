@@ -214,6 +214,110 @@ def mann_whitney_test(inner_vals, outer_vals):
     return p, p_str
 
 # ============================================
+# Raw Time Series Figure Function
+# ============================================
+
+def generate_raw_timeseries_figure(arc_data: dict, output_dir: str, start_year: int, end_year: int) -> None:
+    """
+    Generates a supplementary figure showing raw (unsmoothed) time series
+    for SST, DLI, and Chl-a across Inner and Outer arcs.
+    
+    Uses the same 3-axis layout pattern as TIME_SERIES_LAG_temporal_environ.py
+    with scatter points instead of lines to display raw data granularity.
+    
+    Args:
+        arc_data: Dictionary with keys 'inner' and 'outer', each containing
+                  sub-dictionary with 'sst', 'dli', 'chl' as pd.Series.
+        output_dir: Path to save the output figure.
+        start_year: Start year for title.
+        end_year: End year for title.
+    
+    Output:
+        Saves 'Fig_Raw_Timeseries_SST_DLI_CHL.png' at 300 DPI.
+    """
+    fig, axes = plt.subplots(
+        nrows=2, ncols=1, 
+        figsize=(20, 12), 
+        sharex=True
+    )
+    
+    arc_order = ['inner', 'outer']
+    arc_labels = ['Inner Arc', 'Outer Arc']
+    
+    for i, (arc, arc_label) in enumerate(zip(arc_order, arc_labels)):
+        ax = axes[i]
+        
+        # Extract raw data (no smoothing)
+        sst_raw = arc_data[arc]['sst']
+        dli_raw = arc_data[arc]['dli']
+        chl_raw = arc_data[arc]['chl']
+        
+        # --- AXIS 1 (Left): SST ---
+        ax.set_ylabel('SST (°C)', color=COLOR_SST, fontsize=14, fontweight='bold')
+        p1, = ax.plot(
+            sst_raw.index, sst_raw.values, 
+            'o', markersize=3, alpha=0.6, 
+            color=COLOR_SST, label='SST', 
+            linestyle='None'
+        )
+        ax.tick_params(axis='y', labelcolor=COLOR_SST, labelsize=12)
+        ax.yaxis.grid(True, linestyle='--', alpha=0.4, color=COLOR_SST)
+        
+        # --- AXIS 2 (Right 1): DLI ---
+        ax2 = ax.twinx()
+        ax2.set_ylabel('DLI (mol m⁻² d⁻¹)', color=COLOR_DLI, fontsize=14, fontweight='bold')
+        p2, = ax2.plot(
+            dli_raw.index, dli_raw.values, 
+            'o', markersize=3, alpha=0.6, 
+            color=COLOR_DLI, label='DLI', 
+            linestyle='None'
+        )
+        ax2.tick_params(axis='y', labelcolor=COLOR_DLI, labelsize=12)
+        
+        # --- AXIS 3 (Right 2, offset): Chl-a ---
+        ax3 = ax.twinx()
+        ax3.spines['right'].set_position(('outward', 70))
+        ax3.set_ylabel('Chl-a (mg m⁻³)', color=COLOR_CHL, fontsize=14, fontweight='bold')
+        p3, = ax3.plot(
+            chl_raw.index, chl_raw.values, 
+            'o', markersize=3, alpha=0.6, 
+            color=COLOR_CHL, label='Chl-a', 
+            linestyle='None'
+        )
+        ax3.tick_params(axis='y', labelcolor=COLOR_CHL, labelsize=12)
+        
+        # --- Legend ---
+        lines = [p1, p2, p3]
+        ax.legend(lines, [l.get_label() for l in lines], loc='upper left', fontsize=11)
+        
+        # --- Title with Panel Letter ---
+        ax.set_title(
+            f'Panel {chr(65+i)}: {arc_label} – Raw Daily Data', 
+            fontweight='bold', loc='left', fontsize=12
+        )
+        
+        # --- X-axis formatting (only on bottom panel) ---
+        if i == len(arc_order) - 1:
+            ax.xaxis.set_major_locator(mdates.YearLocator(1))
+            ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+            plt.setp(ax.get_xticklabels(), rotation=0, ha='center', fontsize=12)
+    
+    # --- Super Title ---
+    fig.suptitle(
+        f'Raw Daily Time Series: SST, DLI, and Chl-a ({start_year}–{end_year})', 
+        fontsize=16, fontweight='bold', y=1.02
+    )
+    
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    
+    output_path = os.path.join(output_dir, 'Fig_Raw_Timeseries_SST_DLI_CHL.png')
+    fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    
+    print(f"\n  [NEW FIGURE] Raw time series saved: {output_path}")
+
+# ============================================
 # Main Execution
 # ============================================
 
@@ -377,6 +481,9 @@ if __name__ == "__main__":
     
     pd.DataFrame(arc_results).to_csv(os.path.join(OUTPUT_DIR, 'Cross_Correlation_Results.csv'), index=False)
     pd.DataFrame(stl_results).to_csv(os.path.join(OUTPUT_DIR, 'STL_Pulse_Synchrony.csv'), index=False)
+    
+    # --- Generate Raw Time Series Figure ---
+    generate_raw_timeseries_figure(arc_data, OUTPUT_DIR, START_YEAR, END_YEAR)
     
     print("\n" + "=" * 60)
     print("ANALYSIS COMPLETE! Outputs in Variability_Analysis_GEMINI")
