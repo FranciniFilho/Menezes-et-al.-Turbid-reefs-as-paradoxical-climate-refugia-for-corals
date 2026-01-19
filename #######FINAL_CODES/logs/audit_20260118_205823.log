@@ -1,0 +1,13 @@
+2026-01-18 21:10:07,664 | [MODIS_PAR] AQUA_MODIS.20040623.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:07,692 | [MODIS_PAR] AQUA_MODIS.20040627.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:08,414 | [MODIS_PAR] AQUA_MODIS.20040919.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:16,617 | [MODIS_PAR] AQUA_MODIS.20070208.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:18,306 | [MODIS_PAR] AQUA_MODIS.20070724.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:22,233 | [MODIS_PAR] AQUA_MODIS.20080829.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:22,511 | [MODIS_PAR] AQUA_MODIS.20080924.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:27,388 | [MODIS_PAR] AQUA_MODIS.20091129.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:10:35,194 | [MODIS_PAR] AQUA_MODIS.20110922.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:16:03,357 | [MODIS_PAR] AQUA_MODIS.20140727.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:18:35,939 | [MODIS_PAR] AQUA_MODIS.20151227.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:19:40,073 | [MODIS_PAR] AQUA_MODIS.20161206.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
+2026-01-18 21:22:37,496 | [MODIS_PAR] AQUA_MODIS.20180907.L3m.DAY.PAR.par.4km.nc is OPEN_ERROR: [Errno -101] NetCDF: HDF error: 'K:\\remote sensin. Will try to re-download.
