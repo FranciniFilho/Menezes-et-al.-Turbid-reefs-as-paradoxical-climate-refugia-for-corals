@@ -1,30 +1,89 @@
-# --- Research Results and Models ---
-\#\#\#\#\#\#\#FINAL_RESULTS/
-\#\#\#\#\#\#\#LAST ROUND MS/
-\#\#\#\#\#\#\#PHOTOS AND MAPS/
+# =============================================================================
+# .gitignore for Mussismilia hispida Abrolhos Project
+# GitHub Publication Ready - Updated 2026-01-19
+# =============================================================================
 
-# --- Specific File Types ---
+# --- AI Assistant Metadata & Configurations ---
+# These contain local agent configurations, skills, and conversation artifacts
+.agent/
+.claude/
+.gemini/
+tmpclaude-*
+
+# --- Research Results & Large Outputs ---
+# These are large outputs that should be reproduced via scripts, not tracked
+\#\#\#\#\#\#\#FINAL_RESULTS/
+\#\#\#\#\#\#\#LAST\ ROUND\ MS/
+\#\#\#\#\#\#\#PHOTOS\ AND\ MAPS/
+
+# --- Cache & Compiled Files ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+audit_cache.json
+
+# --- R Environment & Session ---
+.Rproj.user/
+.Rhistory
+*-RBFF.Rhistory
+.RData
+.Ruserdata
+cmdstanr/
+
+# --- Logs & Temporary Files ---
+*.log
+logs/
+_ul
+_ul-*
+variability_analysis_errors.log
+
+# --- Data Files (reproducible via scripts) ---
 *.rds
 *.RData
 *.xlsx
 *.csv
 *.png
 *.pdf
+*.tif
+*.tiff
+*.nc
 
-# --- Assistant Metadata and Temp Files ---
-.claude/
-.gemini/
-tmpclaude-*
-cmdstanr/
-.Rproj.user/
-.Rhistory
-.RData
-.Ruserdata
+# --- Jupyter Notebooks (intermediate development, not final code) ---
+*.ipynb
+.ipynb_checkpoints/
 
-# --- Exceptions (Ensure code and plans are tracked) ---
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE & Editor Files ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Plans Directory (AI-generated implementation plans) ---
+plans/
+
+# =============================================================================
+# EXCEPTIONS: Files that MUST be tracked
+# =============================================================================
+
+# Core analysis scripts (R and Python)
 !\#\#\#\#\#\#\#FINAL_CODES/*.R
 !\#\#\#\#\#\#\#FINAL_CODES/*.py
+
+# Project documentation (human-readable, essential for reproducibility)
+!CLAUDE.md
+!GEMINI.md
 !\#\#\#\#\#\#\#FINAL_CODES/CLAUDE.md
 !\#\#\#\#\#\#\#FINAL_CODES/GEMINI.md
-!plans/*.md
+
+# Test files (essential for validation)
 !\#\#\#\#\#\#\#FINAL_CODES/test_prior_syntax.R
