@@ -418,7 +418,7 @@ if __name__ == "__main__":
         inner_vals = pearson_df[pearson_df['Arc'] == 'inner'][col].dropna()
         outer_vals = pearson_df[pearson_df['Arc'] == 'outer'][col].dropna()
         
-        bp = ax.boxplot([inner_vals, outer_vals], labels=['Inner', 'Outer'], patch_artist=True)
+        bp = ax.boxplot([inner_vals, outer_vals], labels=['Inner', 'Outer'], patch_artist=True, widths=0.75)
         bp['boxes'][0].set_facecolor(COLOR_INNER)
         bp['boxes'][1].set_facecolor(COLOR_OUTER)
         for box in bp['boxes']:
@@ -426,7 +426,7 @@ if __name__ == "__main__":
         
         # Mann-Whitney test
         p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
-        ax.text(0.95, 0.95, p_str, transform=ax.transAxes, ha='right', va='top', fontsize=9, 
+        ax.text(0.88, 0.95, p_str, transform=ax.transAxes, ha='right', va='top', fontsize=9, 
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         ax.axhline(0, color='gray', alpha=0.3, ls='--')
