@@ -426,7 +426,7 @@ if __name__ == "__main__":
         
         # Mann-Whitney test
         p_val, p_str = mann_whitney_test(inner_vals, outer_vals)
-        ax.text(0.88, 0.95, p_str, transform=ax.transAxes, ha='right', va='top', fontsize=9, 
+        ax.text(0.88, 0.82, p_str, transform=ax.transAxes, ha='right', va='top', fontsize=9, 
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         ax.axhline(0, color='gray', alpha=0.3, ls='--')
