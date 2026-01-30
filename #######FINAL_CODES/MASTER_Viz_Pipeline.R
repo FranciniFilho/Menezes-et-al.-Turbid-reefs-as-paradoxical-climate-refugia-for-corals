@@ -171,6 +171,9 @@ generate_marginal_effects <- function(model, model_name) {
         return(NULL)
     }
 
+    # Cores padronizadas para ARC (Inner/Outer)
+    arc_colors <- c("Inner" = "#0072B2", "Outer" = "#E69F00")
+
     plot_list <- list()
 
     for (eff_name in names(ce)) {
@@ -180,32 +183,81 @@ generate_marginal_effects <- function(model, model_name) {
         # Detectar se a variável X é categórica ou numérica
         x_is_categorical <- is.factor(data_eff[[x_var]]) || is.character(data_eff[[x_var]])
 
+        # Detectar coluna ARCH (pode variar dependendo do tipo de modelo)
+        arch_col <- NULL
+        if ("ARCH" %in% names(data_eff)) {
+            arch_col <- "ARCH"
+        } else if ("effect2__" %in% names(data_eff)) {
+            arch_col <- "effect2__"
+        } else if ("cond__" %in% names(data_eff)) {
+            arch_col <- "cond__"
+        }
+
+        # Verificar se este é um efeito de interação com ARCH
+        has_arch_interaction <- !is.null(arch_col) && grepl(":ARCH|ARCH:", eff_name)
+
         if (x_is_categorical) {
             # Para variáveis categóricas: usar pointrange (pontos com barras de erro)
-            p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
-                geom_pointrange(
-                    aes(ymin = lower__, ymax = upper__),
-                    color = color_primary,
-                    size = 1,
-                    linewidth = 1.2
-                ) +
-                labs(
-                    title = paste("Effect of", gsub("_scaled", "", x_var)),
-                    y = "Prediction",
-                    x = gsub("_scaled", "", x_var)
-                ) +
-                theme_publication()
+            if (has_arch_interaction && length(unique(data_eff[[arch_col]])) > 1) {
+                # Com interação ARCH - cores separadas
+                p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__,
+                                          color = .data[[arch_col]], group = .data[[arch_col]])) +
+                    geom_pointrange(aes(ymin = lower__, ymax = upper__), size = 1, linewidth = 1.2,
+                                    position = position_dodge(width = 0.5)) +
+                    scale_color_manual(values = arc_colors, name = "ARC") +
+                    labs(
+                        title = paste("Effect of", gsub("_scaled", "", x_var), "by ARC"),
+                        y = "Prediction",
+                        x = gsub("_scaled", "", x_var)
+                    ) +
+                    theme_publication() +
+                    theme(legend.position = "bottom")
+            } else {
+                p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
+                    geom_pointrange(
+                        aes(ymin = lower__, ymax = upper__),
+                        color = color_primary,
+                        size = 1,
+                        linewidth = 1.2
+                    ) +
+                    labs(
+                        title = paste("Effect of", gsub("_scaled", "", x_var)),
+                        y = "Prediction",
+                        x = gsub("_scaled", "", x_var)
+                    ) +
+                    theme_publication()
+            }
         } else {
             # Para variáveis contínuas: usar ribbon + line
-            p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
-                geom_ribbon(aes(ymin = lower__, ymax = upper__), fill = color_primary, alpha = 0.25) +
-                geom_line(color = color_primary, linewidth = 1.2) +
-                labs(
-                    title = paste("Effect of", gsub("_scaled", "", x_var)),
-                    y = "Prediction",
-                    x = gsub("_scaled", "", x_var)
-                ) +
-                theme_publication()
+            if (has_arch_interaction && length(unique(data_eff[[arch_col]])) > 1) {
+                # Com interação ARCH - linhas sobrepostas com cores diferentes
+                cat(sprintf("      → Plotando interação %s com cores por ARC (coluna: %s)\n", eff_name, arch_col))
+                p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__,
+                                          color = .data[[arch_col]], fill = .data[[arch_col]],
+                                          group = .data[[arch_col]])) +
+                    geom_ribbon(aes(ymin = lower__, ymax = upper__), alpha = 0.2, linewidth = 0) +
+                    geom_line(linewidth = 1.2) +
+                    scale_color_manual(values = arc_colors, name = "ARC") +
+                    scale_fill_manual(values = arc_colors, name = "ARC") +
+                    labs(
+                        title = paste("Effect of", gsub("_scaled", "", x_var), "by ARC"),
+                        y = "Prediction",
+                        x = gsub("_scaled", "", x_var)
+                    ) +
+                    theme_publication() +
+                    theme(legend.position = "bottom")
+            } else {
+                # Efeito principal - cor única
+                p <- ggplot(data_eff, aes(x = .data[[x_var]], y = estimate__)) +
+                    geom_ribbon(aes(ymin = lower__, ymax = upper__), fill = color_primary, alpha = 0.25) +
+                    geom_line(color = color_primary, linewidth = 1.2) +
+                    labs(
+                        title = paste("Effect of", gsub("_scaled", "", x_var)),
+                        y = "Prediction",
+                        x = gsub("_scaled", "", x_var)
+                    ) +
+                    theme_publication()
+            }
         }
 
         plot_list[[eff_name]] <- p
@@ -219,7 +271,7 @@ generate_marginal_effects <- function(model, model_name) {
         plot_annotation(
             title = "Conditional Marginal Effects",
             subtitle = paste("Model:", gsub("_", " ", gsub("WINNER_", "", model_name))),
-            caption = "Line/Point: Median | Band/Bar: 95% CI",
+            caption = "Line/Point: Median | Band/Bar: 95% CI | Colored lines indicate ARC interaction",
             theme = theme(
                 plot.title = element_text(face = "bold", size = 18),
                 plot.subtitle = element_text(size = 12)
