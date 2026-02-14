@@ -132,7 +132,8 @@ for (cv_label in cv_scenarios) {
       formula_obj <- make_gaussian_formula(
         response_var = response_var,
         include_hab = model_config$include_hab,
-        include_depth = model_config$include_depth
+        include_depth = model_config$include_depth,
+        include_interaction_pca = model_config$include_interaction_pca  # NEW
       )
 
       cat(sprintf("    Formula: %s\n\n", deparse(formula_obj)[1]))

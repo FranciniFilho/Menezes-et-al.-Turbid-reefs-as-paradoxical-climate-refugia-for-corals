@@ -136,10 +136,11 @@ prepare_zoib_data_with_year <- function(data_path, cv_label) {
 #' @param excel_path Path to ######Vitality and size_new.xlsx
 #' @param pca_scores_path Path to scores_PCA_Saude.xlsx (existing PCA loadings)
 #' @param env_data_path Path to CV-specific environmental data CSV
+#' @param final_data_path Path to CV-specific final data CSV with interaction variables (NEW)
 #' @param cv_label CV scenario label (CV_02, CV_30, CV_ALL)
 #' @return data.frame prepared for brms with YEAR column
 prepare_health_data_with_year <- function(excel_path, pca_scores_path,
-                                          env_data_path, cv_label) {
+                                          env_data_path, final_data_path = NULL, cv_label) {
 
   cat(sprintf("\n=== Preparing HEALTH data with YEAR: %s ===\n", cv_label))
 
@@ -263,12 +264,77 @@ prepare_health_data_with_year <- function(excel_path, pca_scores_path,
   health_data$HABMERGED <- ifelse(health_data$HAB %in% c("RR", "TP"), "RR_TP", health_data$HAB)
   health_data$HABMERGED <- factor(health_data$HABMERGED, levels = c("PA", "RR_TP"))
 
+  # --- STEP 5.5: Read and merge interaction data from final data file (NEW) ---
+  if (!is.null(final_data_path) && file.exists(final_data_path)) {
+    cat("  Reading interaction data from final data file...\n")
+
+    final_data <- tryCatch({
+      read.csv2(final_data_path, stringsAsFactors = TRUE)
+    }, error = function(e) {
+      read.csv(final_data_path, stringsAsFactors = TRUE)
+    })
+
+    colnames(final_data) <- toupper(colnames(final_data))
+
+    # Select only interaction variables and key columns for merging
+    # Note: final data doesn't have YEAR - merge by SITE_COL or SITE+HAB
+    interaction_cols <- c("SITE_COL", "SITE", "HAB", "PC1_INTERACAO", "PC2_INTERACAO")
+    interaction_cols <- intersect(interaction_cols, names(final_data))
+
+    if (all(c("PC1_INTERACAO", "PC2_INTERACAO") %in% interaction_cols)) {
+      # Use SITE_COL for merging (unique colony identifier in final data)
+      if ("SITE_COL" %in% interaction_cols) {
+        # Create SITE_COL in health_data if it doesn't exist
+        if (!"SITE_COL" %in% names(health_data)) {
+          health_data$SITE_COL <- paste(health_data$SITE, health_data$COL, sep = "_")
+        }
+
+        # Remove duplicates based on SITE_COL
+        final_data_agg <- final_data[, interaction_cols]
+        final_data_agg <- final_data_agg[!duplicated(final_data_agg$SITE_COL), ]
+
+        # Merge interaction data by SITE_COL
+        health_data <- merge(health_data, final_data_agg,
+                           by = "SITE_COL", all.x = TRUE)
+
+        cat(sprintf("    Interaction data merged: %d rows\n", nrow(health_data)))
+      } else {
+        # Fallback: merge by SITE and HAB
+        final_data_agg <- final_data[, interaction_cols]
+        final_data_agg <- final_data_agg[!duplicated(final_data_agg[, c("SITE", "HAB")]), ]
+
+        # Merge interaction data
+        health_data <- merge(health_data, final_data_agg,
+                           by = c("SITE", "HAB"), all.x = TRUE)
+
+        cat(sprintf("    Interaction data merged: %d rows\n", nrow(health_data)))
+      }
+    } else {
+      cat("    WARNING: Interaction variables not found in final data file\n")
+    }
+  } else {
+    cat("    WARNING: No final data path provided for interaction variables\n")
+  }
+
   # --- STEP 6: Scale predictors (remove underscores for brms) ---
+  # Scale existing environmental variables
   for (col in c("PC1_MAGNITUDE", "PC2_MAGNITUDE",
                 "PC1_VARIABILITY", "PC2_VARIABILITY", "DEPTH_M")) {
     if (col %in% names(health_data)) {
       scaled_name <- gsub("_", "", col)
       health_data[[scaled_name]] <- scale(as.numeric(health_data[[col]]))[, 1]
+    }
+  }
+
+  # NEW: Scale biological interaction variables (PC1_INTERACAO, PC2_INTERACAO)
+  for (col in c("PC1_INTERACAO", "PC2_INTERACAO")) {
+    if (col %in% names(health_data)) {
+      # Remove underscore for brms compatibility (s() doesn't accept underscores)
+      scaled_name <- gsub("_", "", col)  # PC1_INTERACAO -> PC1INTERACAO
+      health_data[[scaled_name]] <- scale(as.numeric(health_data[[col]]))[, 1]
+      cat(sprintf("  Scaled %s -> %s\n", col, scaled_name))
+    } else {
+      cat(sprintf("  WARNING: %s not found in data\n", col))
     }
   }
 
@@ -448,12 +514,14 @@ prepare_jsdm_data_with_year <- function(data_path, cv_label) {
 # ============================================================================
 
 #' Build formula for Gaussian Health models with CROSSED YEAR random effect
-#' @param response_var Response variable ("HEALTH_PC1", "HEALTH_PC2")
+#' @param response_var Response variable ("HEALTH_PC1", "HEALTH_PC2", "RGR")
 #' @param include_hab Include HABMERGED?
 #' @param include_depth Include s(DEPTHM)?
+#' @param include_interaction_pca Include interaction PCA terms? (NEW)
 #' @return formula object for brms
 make_gaussian_formula_year_re <- function(response_var, include_hab = TRUE,
-                                         include_depth = TRUE) {
+                                         include_depth = TRUE,
+                                         include_interaction_pca = TRUE) {
   k_val <- 3
 
   # Fixed effects (same as original)
@@ -462,6 +530,12 @@ make_gaussian_formula_year_re <- function(response_var, include_hab = TRUE,
   main_part <- paste0(main_part, " + s(PC2MAGNITUDE, k = ", k_val, ")")
   main_part <- paste0(main_part, " + s(PC1VARIABILITY, k = ", k_val, ")")
   main_part <- paste0(main_part, " + s(PC2VARIABILITY, k = ", k_val, ")")
+
+  # NEW: Add interaction PCA terms as splines
+  if (include_interaction_pca) {
+    main_part <- paste0(main_part, " + s(PC1INTERACAO, k = ", k_val, ")")
+    main_part <- paste0(main_part, " + s(PC2INTERACAO, k = ", k_val, ")")
+  }
 
   if (include_hab) {
     main_part <- paste0(main_part, " + HABMERGED")
@@ -571,33 +645,64 @@ make_jsdm_formula_year_re <- function(include_hab = TRUE, include_depth = TRUE,
 
 # Model combinations for YEAR RE models
 model_combinations_year_re <- list(
+  # Existing models (without interaction PCA) - KEEP AS IS
   list(
     name = "FULL",
     include_hab = TRUE,
     include_depth = TRUE,
     include_arch_interaction = TRUE,
-    description = "Full model with HAB, DEPTH, ARCH interactions"
+    include_interaction_pca = FALSE,  # NEW: without interaction
+    description = "Full model with HAB, DEPTH (no Interaction PCA)"
   ),
   list(
     name = "NOHABITAT",
     include_hab = FALSE,
     include_depth = TRUE,
     include_arch_interaction = TRUE,
-    description = "No HAB, with DEPTH and ARCH"
+    include_interaction_pca = FALSE,
+    description = "No HAB, with DEPTH (no Interaction PCA)"
   ),
   list(
     name = "NODEPTH",
     include_hab = TRUE,
     include_depth = FALSE,
     include_arch_interaction = TRUE,
-    description = "With HAB and ARCH, no DEPTH"
+    include_interaction_pca = FALSE,
+    description = "With HAB, no DEPTH (no Interaction PCA)"
   ),
   list(
     name = "MINIMAL",
     include_hab = FALSE,
     include_depth = FALSE,
     include_arch_interaction = FALSE,
-    description = "Minimal model (PCA only)"
+    include_interaction_pca = FALSE,
+    description = "Minimal model (PCA only, no Interaction PCA)"
+  ),
+
+  # NEW: Models with interaction PCA
+  list(
+    name = "FULL_INTERACTION",
+    include_hab = TRUE,
+    include_depth = TRUE,
+    include_arch_interaction = TRUE,
+    include_interaction_pca = TRUE,  # NEW: with interaction
+    description = "Full model with HAB, DEPTH, and Interaction PCA"
+  ),
+  list(
+    name = "NOHABITAT_INTERACTION",
+    include_hab = FALSE,
+    include_depth = TRUE,
+    include_arch_interaction = TRUE,
+    include_interaction_pca = TRUE,
+    description = "No HAB, with DEPTH and Interaction PCA"
+  ),
+  list(
+    name = "NODEPTH_INTERACTION",
+    include_hab = TRUE,
+    include_depth = FALSE,
+    include_arch_interaction = TRUE,
+    include_interaction_pca = TRUE,
+    description = "With HAB and Interaction PCA, no DEPTH"
   )
 )
 

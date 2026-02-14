@@ -47,6 +47,13 @@ dataset_paths_abundance <- list(
   CV_ALL = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/#####output_local_PCA_CV_all_FINAL/dados_abundancia_integrados_long_format.csv")
 )
 
+# Final data paths (contain PC1_INTERACAO, PC2_INTERACAO - NEW)
+dataset_paths_final <- list(
+  CV_02 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_2/dados_finais_para_modelagem_com_ARCH.csv"),
+  CV_30 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_30/dados_finais_para_modelagem_com_ARCH.csv"),
+  CV_ALL = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_all/dados_finais_para_modelagem_com_ARCH.csv")
+)
+
 # Output directory
 base_output_dir <- output_dirs_year_re$HEALTH_YEAR_RE
 dir.create(base_output_dir, showWarnings = FALSE, recursive = TRUE)
@@ -83,6 +90,7 @@ for (cv_label in cv_scenarios) {
         excel_path = RAW_HEALTH_EXCEL,
         pca_scores_path = PCA_SCORES_PATH,
         env_data_path = dataset_paths_abundance[[cv_label]],
+        final_data_path = dataset_paths_final[[cv_label]],  # NEW: for interaction variables
         cv_label = cv_label
       )
     }, error = function(e) {
@@ -136,7 +144,8 @@ for (cv_label in cv_scenarios) {
       formula_obj <- make_gaussian_formula_year_re(
         response_var = response_var,
         include_hab = model_config$include_hab,
-        include_depth = model_config$include_depth
+        include_depth = model_config$include_depth,
+        include_interaction_pca = model_config$include_interaction_pca  # NEW
       )
 
       cat(sprintf("    Formula: %s\n\n", deparse(formula_obj)[1]))
