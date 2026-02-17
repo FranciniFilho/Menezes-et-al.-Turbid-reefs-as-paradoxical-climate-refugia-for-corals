@@ -155,6 +155,11 @@ prepare_health_data_with_year <- function(excel_path, pca_scores_path,
 
   # Standardize column names
   colnames(raw_data) <- toupper(trimws(colnames(raw_data)))
+  for (col in c("SITE", "HAB", "REEF")) {
+    if (col %in% names(raw_data)) {
+      raw_data[[col]] <- toupper(trimws(as.character(raw_data[[col]])))
+    }
+  }
 
   # Verify required columns
   required_cols <- c("YEAR", "HEALTH %", "BLEACHING %", "DEAD %", "SITE", "COL")
@@ -264,56 +269,109 @@ prepare_health_data_with_year <- function(excel_path, pca_scores_path,
   health_data$HABMERGED <- ifelse(health_data$HAB %in% c("RR", "TP"), "RR_TP", health_data$HAB)
   health_data$HABMERGED <- factor(health_data$HABMERGED, levels = c("PA", "RR_TP"))
 
-  # --- STEP 5.5: Read and merge interaction data from final data file (NEW) ---
-  if (!is.null(final_data_path) && file.exists(final_data_path)) {
-    cat("  Reading interaction data from final data file...\n")
+  # --- STEP 5.5: Read and merge interaction data (YEAR-specific priority) ---
+  build_yearly_interaction_pca <- function(df_raw) {
+    required_interaction_cols <- c(
+      "SUR_TURF %", "SUR_CCA %", "SUR_CYANO %",
+      "SUR_DICTYOTA %", "SUR_OTHMACR %",
+      "SUR_PALYTHOA %", "SUR_SAND %", "SUR_NON-BIOTIC %"
+    )
+    if (!all(required_interaction_cols %in% names(df_raw))) {
+      return(NULL)
+    }
+
+    interaction_agg <- aggregate(
+      df_raw[, required_interaction_cols],
+      by = list(
+        YEAR = as.character(df_raw$YEAR),
+        SITE = toupper(trimws(as.character(df_raw$SITE))),
+        HAB = toupper(trimws(as.character(df_raw$HAB)))
+      ),
+      FUN = function(x) mean(as.numeric(x), na.rm = TRUE)
+    )
+
+    interaction_agg$SUR_MACROALGAE <- interaction_agg$`SUR_DICTYOTA %` + interaction_agg$`SUR_OTHMACR %`
+    interaction_agg$SUR_ABIOTIC <- interaction_agg$`SUR_SAND %` + interaction_agg$`SUR_NON-BIOTIC %`
+
+    pca_input <- data.frame(
+      SUR_TURF = interaction_agg$`SUR_TURF %`,
+      SUR_CCA = interaction_agg$`SUR_CCA %`,
+      SUR_MACROALGAE = interaction_agg$SUR_MACROALGAE,
+      SUR_CYANO = interaction_agg$`SUR_CYANO %`,
+      SUR_PALYTHOA = interaction_agg$`SUR_PALYTHOA %`,
+      SUR_ABIOTIC = interaction_agg$SUR_ABIOTIC
+    )
+    pca_input[is.na(pca_input)] <- 0
+
+    out_list <- list()
+    for (y in sort(unique(interaction_agg$YEAR))) {
+      idx <- interaction_agg$YEAR == y
+      block <- pca_input[idx, , drop = FALSE]
+
+      if (nrow(block) < 3) {
+        next
+      }
+      sds <- apply(block, 2, sd, na.rm = TRUE)
+      keep <- !is.na(sds) & sds > 0
+      block <- block[, keep, drop = FALSE]
+      if (ncol(block) < 2) {
+        next
+      }
+
+      block_scaled <- scale(block)
+      pca_fit <- stats::prcomp(block_scaled, center = FALSE, scale. = FALSE)
+      pc1 <- as.numeric(pca_fit$x[, 1])
+      pc2 <- if (ncol(pca_fit$x) >= 2) as.numeric(pca_fit$x[, 2]) else rep(0, length(pc1))
+
+      out_list[[as.character(y)]] <- data.frame(
+        YEAR = interaction_agg$YEAR[idx],
+        SITE = interaction_agg$SITE[idx],
+        HAB = interaction_agg$HAB[idx],
+        PC1_INTERACAO = pc1,
+        PC2_INTERACAO = pc2,
+        stringsAsFactors = FALSE
+      )
+    }
+
+    if (length(out_list) == 0) {
+      return(NULL)
+    }
+    do.call(rbind, out_list)
+  }
+
+  interaction_yearly <- build_yearly_interaction_pca(raw_data)
+  if (!is.null(interaction_yearly)) {
+    cat("  Merging YEAR-specific interaction PCA scores from raw vitality data...\n")
+    health_data <- merge(
+      health_data, interaction_yearly,
+      by = c("SITE", "HAB", "YEAR"),
+      all.x = TRUE
+    )
+    cat(sprintf("    YEAR-specific interaction rows merged: %d rows\n", nrow(health_data)))
+  } else if (!is.null(final_data_path) && file.exists(final_data_path)) {
+    cat("  WARNING: Year-specific interaction PCA unavailable. Falling back to non-year interaction data.\n")
 
     final_data <- tryCatch({
       read.csv2(final_data_path, stringsAsFactors = TRUE)
     }, error = function(e) {
       read.csv(final_data_path, stringsAsFactors = TRUE)
     })
-
     colnames(final_data) <- toupper(colnames(final_data))
+    final_data$SITE <- toupper(trimws(as.character(final_data$SITE)))
+    final_data$HAB <- toupper(trimws(as.character(final_data$HAB)))
 
-    # Select only interaction variables and key columns for merging
-    # Note: final data doesn't have YEAR - merge by SITE_COL or SITE+HAB
-    interaction_cols <- c("SITE_COL", "SITE", "HAB", "PC1_INTERACAO", "PC2_INTERACAO")
+    interaction_cols <- c("SITE", "HAB", "PC1_INTERACAO", "PC2_INTERACAO")
     interaction_cols <- intersect(interaction_cols, names(final_data))
-
     if (all(c("PC1_INTERACAO", "PC2_INTERACAO") %in% interaction_cols)) {
-      # Use SITE_COL for merging (unique colony identifier in final data)
-      if ("SITE_COL" %in% interaction_cols) {
-        # Create SITE_COL in health_data if it doesn't exist
-        if (!"SITE_COL" %in% names(health_data)) {
-          health_data$SITE_COL <- paste(health_data$SITE, health_data$COL, sep = "_")
-        }
-
-        # Remove duplicates based on SITE_COL
-        final_data_agg <- final_data[, interaction_cols]
-        final_data_agg <- final_data_agg[!duplicated(final_data_agg$SITE_COL), ]
-
-        # Merge interaction data by SITE_COL
-        health_data <- merge(health_data, final_data_agg,
-                           by = "SITE_COL", all.x = TRUE)
-
-        cat(sprintf("    Interaction data merged: %d rows\n", nrow(health_data)))
-      } else {
-        # Fallback: merge by SITE and HAB
-        final_data_agg <- final_data[, interaction_cols]
-        final_data_agg <- final_data_agg[!duplicated(final_data_agg[, c("SITE", "HAB")]), ]
-
-        # Merge interaction data
-        health_data <- merge(health_data, final_data_agg,
-                           by = c("SITE", "HAB"), all.x = TRUE)
-
-        cat(sprintf("    Interaction data merged: %d rows\n", nrow(health_data)))
-      }
+      final_data_agg <- final_data[, interaction_cols]
+      final_data_agg <- final_data_agg[!duplicated(final_data_agg[, c("SITE", "HAB")]), ]
+      health_data <- merge(health_data, final_data_agg, by = c("SITE", "HAB"), all.x = TRUE)
+      cat(sprintf("    Fallback interaction rows merged: %d rows\n", nrow(health_data)))
     } else {
-      cat("    WARNING: Interaction variables not found in final data file\n")
+      cat("    WARNING: Interaction variables not found in fallback final data file\n")
     }
   } else {
-    cat("    WARNING: No final data path provided for interaction variables\n")
+    cat("    WARNING: No valid source found for interaction PCA variables\n")
   }
 
   # --- STEP 6: Scale predictors (remove underscores for brms) ---
@@ -503,7 +561,7 @@ prepare_jsdm_data_with_year <- function(data_path, cv_label) {
   cat(sprintf("  JSDM data has %d YEAR levels: %s\n",
               n_years, paste(unique(composition$YEAR), collapse = ", ")))
 
-  cat(sprintf("✓ JSDM data prepared for %s: N=%d sampling units, %d REEFs\n",
+  cat(sprintf("??? JSDM data prepared for %s: N=%d sampling units, %d REEFs\n",
               cv_label, nrow(composition), length(unique(composition$REEF))))
 
   return(as.data.frame(composition))
@@ -732,13 +790,13 @@ load_or_fit_model_year_re <- function(model_name, cv_name, model_type,
 
   # Check cache
   if (file.exists(model_path)) {
-    cat(sprintf("  📦 Cache found: %s\n", model_filename))
+    cat(sprintf("  ???? Cache found: %s\n", model_filename))
     fit <- readRDS(model_path)
     return(list(fit = fit, cached = TRUE, path = model_path))
   }
 
   # Fit new model
-  cat(sprintf("  🔧 Fitting model: %s\n", model_filename))
+  cat(sprintf("  ???? Fitting model: %s\n", model_filename))
   start_time <- Sys.time()
 
   fit <- do.call(brm, c(
@@ -753,11 +811,11 @@ load_or_fit_model_year_re <- function(model_name, cv_name, model_type,
 
   end_time <- Sys.time()
   elapsed <- difftime(end_time, start_time, units = "mins")
-  cat(sprintf("  ✓ Model fitted in %.1f minutes\n", as.numeric(elapsed)))
+  cat(sprintf("  ??? Model fitted in %.1f minutes\n", as.numeric(elapsed)))
 
   # Save immediately
   saveRDS(fit, model_path)
-  cat(sprintf("  💾 Model saved: %s\n", model_path))
+  cat(sprintf("  ???? Model saved: %s\n", model_path))
 
   return(list(fit = fit, cached = FALSE, path = model_path,
               elapsed_mins = as.numeric(elapsed)))
@@ -822,7 +880,7 @@ check_convergence <- function(fit, model_name, cv_label) {
   all_ok <- rhat_ok && ess_ok && div_ok
 
   # Logging
-  status <- if (all_ok) "  ✓ CONVERGED" else "  ⚠ PROBLEMS"
+  status <- if (all_ok) "  ??? CONVERGED" else "  ??? PROBLEMS"
   cat(sprintf("%s %s_%s: Rhat=%.4f, ESS_bulk=%d, ESS_tail=%d, Div=%s\n",
               status, model_name, cv_label, rhat_max,
               round(ess_bulk_min), round(ess_tail_min),
@@ -1079,12 +1137,12 @@ diagnose_convergence_with_recommendations <- function(fit, model_name, cv_label,
   if (n_issues == 0 && n_warnings == 0) {
     diagnostics$status <- "EXCELLENT"
     diagnostics$passed <- TRUE
-    cat(sprintf("  ✓✓✓ EXCELLENT CONVERGENCE: Rhat=%.4f, ESS_bulk=%d, ESS_tail=%d, Div=0\n",
+    cat(sprintf("  ????????? EXCELLENT CONVERGENCE: Rhat=%.4f, ESS_bulk=%d, ESS_tail=%d, Div=0\n",
                 rhat_max, ess_bulk_min, ess_tail_min))
   } else if (n_issues == 0) {
     diagnostics$status <- "GOOD"
     diagnostics$passed <- TRUE
-    cat(sprintf("  ✓✓ GOOD CONVERGENCE: Rhat=%.4f, ESS_bulk=%d, ESS_tail=%d, Div=%d\n",
+    cat(sprintf("  ?????? GOOD CONVERGENCE: Rhat=%.4f, ESS_bulk=%d, ESS_tail=%d, Div=%d\n",
                 rhat_max, ess_bulk_min, ess_tail_min, n_div))
     if (n_warnings > 0) {
       cat(sprintf("     Minor warnings: %s\n", paste(names(diagnostics$warnings), collapse = ", ")))
@@ -1092,7 +1150,7 @@ diagnose_convergence_with_recommendations <- function(fit, model_name, cv_label,
   } else {
     diagnostics$status <- "PROBLEMS"
     diagnostics$passed <- FALSE
-    cat(sprintf("  ⚠⚠⚠ CONVERGENCE PROBLEMS DETECTED:\n"))
+    cat(sprintf("  ????????? CONVERGENCE PROBLEMS DETECTED:\n"))
     for (issue_name in names(diagnostics$issues)) {
       cat(sprintf("     - %s\n", diagnostics$issues[[issue_name]]))
     }
@@ -1100,7 +1158,7 @@ diagnose_convergence_with_recommendations <- function(fit, model_name, cv_label,
 
   # --- PRINT RECOMMENDATIONS ---
   if (length(recommendations) > 0) {
-    cat(sprintf("\n  🔧 RECOMMENDED ACTIONS:\n"))
+    cat(sprintf("\n  ???? RECOMMENDED ACTIONS:\n"))
     for (rec_name in names(recommendations)) {
       rec <- recommendations[[rec_name]]
       if (rec_name == "adapt_delta") {
@@ -1115,7 +1173,7 @@ diagnose_convergence_with_recommendations <- function(fit, model_name, cv_label,
       } else if (rec_name == "model_reformulation") {
         cat(sprintf("     [%s] Model reformulation needed:\n", rec$priority))
         for (s in rec$suggestions) {
-          cat(sprintf("         • %s\n", s))
+          cat(sprintf("         ??? %s\n", s))
         }
       }
     }
@@ -1197,12 +1255,12 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
 
     # Check cache first
     if (file.exists(model_path) && attempt == 0) {
-      cat(sprintf("  📦 Cache found: %s\n", model_filename))
+      cat(sprintf("  ???? Cache found: %s\n", model_filename))
       fit <- readRDS(model_path)
       refit_history$cached <- TRUE
     } else {
       # Fit with current settings
-      cat(sprintf("\n  🔧 Fitting attempt %d for %s_%s\n", attempt, model_name, cv_name))
+      cat(sprintf("\n  ???? Fitting attempt %d for %s_%s\n", attempt, model_name, cv_name))
       if (attempt > 0) {
         cat(sprintf("     adapt_delta=%.3f, max_treedepth=%d\n",
                     current_args$control$adapt_delta,
@@ -1217,7 +1275,7 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
           current_args
         ))
       }, error = function(e) {
-        cat(sprintf("  ❌ Fitting error: %s\n", e$message))
+        cat(sprintf("  ??? Fitting error: %s\n", e$message))
         return(NULL)
       })
 
@@ -1234,7 +1292,7 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
 
       # Save model
       saveRDS(fit, model_path)
-      cat(sprintf("  💾 Model saved: %s (%.1f min)\n", model_filename, elapsed))
+      cat(sprintf("  ???? Model saved: %s (%.1f min)\n", model_filename, elapsed))
     }
 
     # Run diagnostics
@@ -1255,7 +1313,7 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
 
     # Check if convergence achieved
     if (diags$passed) {
-      cat(sprintf("\n  ✅ Convergence achieved on attempt %d\n", attempt))
+      cat(sprintf("\n  ??? Convergence achieved on attempt %d\n", attempt))
       return(list(
         fit = fit,
         diagnostics = diags,
@@ -1266,10 +1324,10 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
 
     # Prepare for refit if not at max attempts
     if (attempt < max_refits) {
-      cat(sprintf("\n  🔄 Preparing refit attempt %d...\n", attempt + 1))
+      cat(sprintf("\n  ???? Preparing refit attempt %d...\n", attempt + 1))
       current_args <- generate_updated_brms_args(current_args, diags)
     } else {
-      cat(sprintf("\n  ⚠ Maximum refit attempts (%d) reached. Model may have convergence issues.\n",
+      cat(sprintf("\n  ??? Maximum refit attempts (%d) reached. Model may have convergence issues.\n",
                   max_refits))
     }
   }
@@ -1295,7 +1353,7 @@ auto_fit_with_convergence_check <- function(model_name, cv_name, model_type,
 #' @return loo object or NULL on error
 safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
 
-  cat(sprintf("  📊 Calculating LOO for %s_%s...\n", model_name, cv_label))
+  cat(sprintf("  ???? Calculating LOO for %s_%s...\n", model_name, cv_label))
 
   loo_result <- tryCatch({
     loo_obj <- loo(fit, cores = 4)
@@ -1305,12 +1363,12 @@ safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
     n_high_k <- sum(k_vals > 0.7, na.rm = TRUE)
 
     if (n_high_k > 0 && use_moment_match) {
-      cat(sprintf("  ⚠ %d observations with Pareto k > 0.7. Trying moment_match...\n", n_high_k))
+      cat(sprintf("  ??? %d observations with Pareto k > 0.7. Trying moment_match...\n", n_high_k))
 
       loo_obj <- tryCatch({
         loo(fit, cores = 4, moment_match = TRUE, k_threshold = 0.7)
       }, error = function(e) {
-        cat("  ⚠ moment_match failed. Using original LOO.\n")
+        cat("  ??? moment_match failed. Using original LOO.\n")
         loo_obj
       })
     }
@@ -1318,7 +1376,7 @@ safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
     loo_obj
 
   }, error = function(e) {
-    cat(sprintf("  ❌ LOO error for %s_%s: %s\n", model_name, cv_label, e$message))
+    cat(sprintf("  ??? LOO error for %s_%s: %s\n", model_name, cv_label, e$message))
     NULL
   })
 
@@ -1330,14 +1388,46 @@ safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
 #' @param loo_list Named list of loo objects
 #' @param cv_label CV label
 #' @return data.frame with comparison and winner model
-compare_loo_within_cv <- function(loo_list, cv_label) {
+compare_loo_within_cv <- function(loo_list, cv_label, converged_map = NULL) {
 
   # Remove NULLs
   loo_list <- Filter(Negate(is.null), loo_list)
 
-  if (length(loo_list) < 2) {
-    cat(sprintf("  ⚠ Less than 2 valid models for comparison in %s\n", cv_label))
+  # Exclude non-converged models from winner selection.
+  if (!is.null(converged_map)) {
+    keep <- unlist(converged_map[names(loo_list)])
+    keep[is.na(keep)] <- FALSE
+    excluded <- names(loo_list)[!keep]
+    if (length(excluded) > 0) {
+      cat(sprintf("  Excluding non-converged models from %s: %s\n",
+                  cv_label, paste(excluded, collapse = ", ")))
+    }
+    loo_list <- loo_list[keep]
+  }
+
+  if (length(loo_list) == 0) {
+    cat(sprintf("  WARNING: No converged models with valid LOO in %s\n", cv_label))
     return(NULL)
+  }
+
+  if (length(loo_list) == 1) {
+    winner <- names(loo_list)[1]
+    cat(sprintf("  Winner for %s: %s (single converged model)\n", cv_label, winner))
+    comp_df <- data.frame(
+      elpd_diff = 0,
+      se_diff = NA_real_,
+      Model = winner,
+      CV = cv_label,
+      Rank = 1,
+      stringsAsFactors = FALSE
+    )
+    return(list(
+      comparison = comp_df,
+      winner = winner,
+      delta_looic_to_second = NA_real_,
+      se_diff = NA_real_,
+      significance = "Single converged model"
+    ))
   }
 
   # Compare
@@ -1351,23 +1441,18 @@ compare_loo_within_cv <- function(loo_list, cv_label) {
 
   # Determine winner
   winner <- rownames(comparison)[1]
-  delta_second <- abs(comparison[2, "elpd_diff"]) * 2  # ΔLOOIC = 2 * Δelpd
+  delta_second <- abs(comparison[2, "elpd_diff"]) * 2
   se_second <- comparison[2, "se_diff"]
 
-  # Significance
-  significance <- if (requireNamespace("dplyr", quietly = TRUE)) {
-    dplyr::case_when(
-      delta_second > 2 * se_second ~ "Significant",
-      delta_second > se_second ~ "Moderate",
-      TRUE ~ "Not significant"
-    )
+  significance <- if (delta_second > 2 * se_second) {
+    "Significant"
+  } else if (delta_second > se_second) {
+    "Moderate"
   } else {
-    if (delta_second > 2 * se_second) "Significant"
-    else if (delta_second > se_second) "Moderate"
-    else "Not significant"
+    "Not significant"
   }
 
-  cat(sprintf("  🏆 Winner for %s: %s (Δ=%.1f, SE=%.1f, %s)\n",
+  cat(sprintf("  Winner for %s: %s (Delta=%.1f, SE=%.1f, %s)\n",
               cv_label, winner, delta_second, se_second, significance))
 
   return(list(
@@ -1379,6 +1464,51 @@ compare_loo_within_cv <- function(loo_list, cv_label) {
   ))
 }
 
+
+# Compare CV windows formally via LOO for one fixed model specification.
+compare_cv_windows_formal_loo <- function(loo_by_cv, context_label,
+                                          converged_by_cv = NULL,
+                                          out_csv_path = NULL) {
+  loo_by_cv <- Filter(Negate(is.null), loo_by_cv)
+
+  if (!is.null(converged_by_cv)) {
+    keep <- unlist(converged_by_cv[names(loo_by_cv)])
+    keep[is.na(keep)] <- FALSE
+    loo_by_cv <- loo_by_cv[keep]
+  }
+
+  if (length(loo_by_cv) < 2) {
+    msg <- sprintf("Insufficient converged CV windows for %s", context_label)
+    cat(sprintf("  WARNING: %s\n", msg))
+    return(list(status = "INSUFFICIENT", comparison = NULL, winner_cv = NA_character_, message = msg))
+  }
+
+  comparison <- tryCatch({
+    loo_compare(loo_by_cv)
+  }, error = function(e) {
+    msg <- sprintf("LOO CV-window comparison failed for %s: %s", context_label, e$message)
+    cat(sprintf("  WARNING: %s\n", msg))
+    return(structure(list(msg = msg), class = "loo_compare_error"))
+  })
+
+  if (inherits(comparison, "loo_compare_error")) {
+    return(list(status = "ERROR", comparison = NULL, winner_cv = NA_character_, message = comparison$msg))
+  }
+
+  comp_df <- as.data.frame(comparison)
+  comp_df$CV_Window <- rownames(comp_df)
+  comp_df$Context <- context_label
+  comp_df$Rank <- seq_len(nrow(comp_df))
+  winner_cv <- rownames(comparison)[1]
+
+  cat(sprintf("  CV-window winner for %s: %s\n", context_label, winner_cv))
+
+  if (!is.null(out_csv_path)) {
+    write.csv(comp_df, out_csv_path, row.names = FALSE)
+  }
+
+  list(status = "OK", comparison = comp_df, winner_cv = winner_cv, message = "Success")
+}
 
 # ============================================================================
 # SECTION 10: PRIORS (same as original)
@@ -1454,3 +1584,4 @@ dataset_paths_abundance <- list(
 #   - generate_updated_brms_args()
 #   - auto_fit_with_convergence_check()
 # ============================================================================
+
