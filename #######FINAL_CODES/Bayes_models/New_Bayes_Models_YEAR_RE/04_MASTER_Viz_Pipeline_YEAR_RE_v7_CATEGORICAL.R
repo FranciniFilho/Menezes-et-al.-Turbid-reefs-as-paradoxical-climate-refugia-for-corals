@@ -23,7 +23,7 @@ gc()
 libs <- c("brms", "ggplot2", "dplyr", "tidybayes", "ggdist", "bayesplot",
           "patchwork", "cowplot", "loo", "purrr", "tidyverse", "scales")
 missing_packages <- libs[!libs %in% installed.packages()[, "Package"]]
-if (length(missing_packages > 0)) {
+if (length(missing_packages) > 0) {
     cat("Instalando pacotes faltantes:", paste(missing_packages, collapse = ", "), "\n")
     install.packages(missing_packages, dependencies = TRUE)
 }
@@ -59,12 +59,18 @@ arc_colors <- c("Inner" = "#0072B2", "Outer" = "#E69F00")
 arc_colors_full <- c("Inner Arc" = "#0072B2", "Outer Arc" = "#E69F00")
 
 ### 3. CONFIGURAÇÃO DOS DIRETÓRIOS -----------------------------------------------
-search_directories_YEAR_RE_v7 <- c(
-    "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/ZOIB_Abundance_YEAR_RE",
-    "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Gaussian_RGR",
-    "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Gaussian_Health_YEAR_RE",
-    "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/JSDM_Dirichlet_YEAR_RE"
-)
+get_current_script_dir <- function() {
+    cmd_args <- commandArgs(trailingOnly = FALSE)
+    file_arg <- grep("^--file=", cmd_args, value = TRUE)
+    if (length(file_arg) > 0) {
+        return(dirname(normalizePath(sub("^--file=", "", file_arg[1]))))
+    }
+    return(getwd())
+}
+
+script_dir_YEAR_RE_v7 <- get_current_script_dir()
+global_winner_directory_YEAR_RE_v7 <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE"
+consolidation_script_YEAR_RE_v7 <- file.path(script_dir_YEAR_RE_v7, "05_CONSOLIDATE_GLOBAL_WINNERS_YEAR_RE.R")
 
 output_dir_YEAR_RE_v7 <- "C:/Users/rbfra/OneDrive/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL"
 dir.create(output_dir_YEAR_RE_v7, showWarnings = FALSE, recursive = TRUE)
@@ -73,25 +79,25 @@ cat("\n", rep("=", 80), "\n", sep = "")
 cat("MASTER VISUALIZATION PIPELINE V7 - YEAR RANDOM EFFECT MODELS (CATEGORICAL)\n")
 cat("V7 NEW: Categorical PDPs (HABMERGED, ARCH, REEF)\n")
 cat("V6 Inherited: ARCH interactions, HABMERGED display, YEAR SD annotation\n")
+cat("Input mode: WINNER_GLOBAL_<response>.rds only\n")
 cat(rep("=", 80), "\n", sep = "")
 cat("Output directory:", output_dir_YEAR_RE_v7, "\n")
+cat("Global winner directory:", global_winner_directory_YEAR_RE_v7, "\n")
 
 ### 4. FUNÇÕES AUXILIARES --------------------------------------------------------
 
-discover_winner_models <- function(search_dirs) {
-    cat("\n--- Buscando modelos WINNER (.rds) ---\n")
-    all_rds_files <- c()
-    for (dir_path in search_dirs) {
-        if (dir.exists(dir_path)) {
-            files <- list.files(path = dir_path, pattern = "^WINNER_.*\\.rds$",
-                               recursive = TRUE, full.names = TRUE, ignore.case = FALSE)
-            files <- files[!grepl("_BACKUP\\.rds$", files, ignore.case = TRUE)]
-            all_rds_files <- c(all_rds_files, files)
-            cat(sprintf("  ✓ %s: %d modelo(s)\n", basename(dirname(dir_path)), length(files)))
-        }
+discover_winner_models <- function(global_dir) {
+    cat("\n--- Buscando modelos WINNER_GLOBAL (.rds) ---\n")
+    if (!dir.exists(global_dir)) {
+        cat(sprintf("  ⚠ Diretório não encontrado: %s\n", global_dir))
+        return(character(0))
     }
-    cat(sprintf("\nTotal: %d modelos WINNER\n", length(all_rds_files)))
-    return(all_rds_files)
+    files <- list.files(path = global_dir, pattern = "^WINNER_GLOBAL_.*\\.rds$",
+                       recursive = FALSE, full.names = TRUE, ignore.case = FALSE)
+    files <- files[!grepl("_BACKUP\\.rds$", files, ignore.case = TRUE)]
+    cat(sprintf("  ✓ %s: %d modelo(s)\n", basename(global_dir), length(files)))
+    cat(sprintf("\nTotal: %d modelos WINNER_GLOBAL\n", length(files)))
+    return(files)
 }
 
 detect_model_type_year_re_v7 <- function(model, model_name) {
@@ -1879,7 +1885,20 @@ cat("  ✓ Interaction Spotlight for significant ARCH interactions\n")
 cat("  ✓ Enhanced YEAR RE Diagnostics with significance testing\n")
 cat(rep("=", 80), "\n", sep = "")
 
-winner_files <- discover_winner_models(search_directories_YEAR_RE_v7)
+if (file.exists(consolidation_script_YEAR_RE_v7)) {
+    cat("\n--- Atualizando WINNER_GLOBAL antes das figuras ---\n")
+    source(consolidation_script_YEAR_RE_v7)
+    if (exists("build_global_winners_year_re")) {
+        build_global_winners_year_re()
+    }
+} else {
+    cat(sprintf("\nâš  Script de consolidaÃ§Ã£o nÃ£o encontrado: %s\n", consolidation_script_YEAR_RE_v7))
+}
+
+winner_files <- discover_winner_models(global_winner_directory_YEAR_RE_v7)
+if (length(winner_files) == 0) {
+    stop("Nenhum WINNER_GLOBAL encontrado. Execute a consolidaÃ§Ã£o e tente novamente.")
+}
 
 processed_info <- list()
 for (rds_file in winner_files) {

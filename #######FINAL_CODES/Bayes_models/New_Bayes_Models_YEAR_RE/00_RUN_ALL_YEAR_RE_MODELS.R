@@ -138,6 +138,16 @@ if (n_success > 0) {
   cat("\nTo view results, check:\n")
   cat("  - C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/\n")
   cat("\nWinner models are saved as WINNER_*.rds files\n")
+  cat("\nRunning global winner consolidation...\n")
+  tryCatch({
+    source("05_CONSOLIDATE_GLOBAL_WINNERS_YEAR_RE.R")
+    global_summary <- build_global_winners_year_re()
+    n_global <- sum(global_summary$Status == "OK", na.rm = TRUE)
+    cat(sprintf("Global winners created: %d\n", n_global))
+    cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/\n")
+  }, error = function(e) {
+    cat(sprintf("\n⚠ Global winner consolidation failed: %s\n", e$message))
+  })
 } else {
   cat("\n⚠ Some scripts failed. Check error messages above.\n")
 }
