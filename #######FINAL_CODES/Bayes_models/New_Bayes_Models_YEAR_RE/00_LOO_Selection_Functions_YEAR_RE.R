@@ -1550,13 +1550,14 @@ brms_args_year_re <- list(
 )
 
 # More conservative configuration for JSDM YEAR RE
+# OPTIMIZED: Faster but still robust (iter 4000, adapt_delta 0.95, max_treedepth 12)
 brms_args_jsdm_year_re <- list(
   backend = "cmdstanr",
   cores = 4,
-  iter = 6000,
-  warmup = 3000,
+  iter = 4000,
+  warmup = 2000,
   chains = 4,
-  control = list(adapt_delta = 0.99, max_treedepth = 15),
+  control = list(adapt_delta = 0.95, max_treedepth = 12),
   refresh = 500,
   save_pars = save_pars(all = TRUE)
 )

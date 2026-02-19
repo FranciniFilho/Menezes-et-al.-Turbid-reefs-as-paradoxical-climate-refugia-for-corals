@@ -145,6 +145,12 @@ if (n_success > 0) {
     n_global <- sum(global_summary$Status == "OK", na.rm = TRUE)
     cat(sprintf("Global winners created: %d\n", n_global))
     cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/\n")
+
+    cat("\nRunning detailed winner report stage (06)...\n")
+    source("06_WINNER_DETAILED_REPORT_YEAR_RE.R")
+    report_outputs <- build_winner_detailed_reports_year_re()
+    cat(sprintf("Detailed report markdown: %s\n", report_outputs$report_md))
+    cat(sprintf("Supplement report markdown: %s\n", report_outputs$supplement_md))
   }, error = function(e) {
     cat(sprintf("\n⚠ Global winner consolidation failed: %s\n", e$message))
   })

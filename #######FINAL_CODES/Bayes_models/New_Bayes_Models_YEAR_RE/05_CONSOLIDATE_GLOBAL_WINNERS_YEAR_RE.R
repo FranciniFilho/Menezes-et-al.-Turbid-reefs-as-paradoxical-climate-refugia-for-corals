@@ -111,10 +111,9 @@ normalize_summary_rows <- function(summary_df, response_label) {
 select_global_winner <- function(cfg) {
   summary_df <- read_csv_flexible(cfg$summary_file)
   combined_df <- read_csv_flexible(cfg$combined_file)
-  if (is.null(summary_df) || is.null(combined_df)) return(NULL)
+  if (is.null(combined_df)) return(NULL)
 
   candidate_rows <- normalize_summary_rows(summary_df, cfg$label)
-  if (is.null(candidate_rows) || nrow(candidate_rows) == 0) return(NULL)
 
   if (!("Response" %in% names(combined_df)) || !("Model" %in% names(combined_df)) ||
       !("CV" %in% names(combined_df)) || !("LOOIC" %in% names(combined_df))) {
@@ -125,26 +124,48 @@ select_global_winner <- function(cfg) {
     combined_df$Converged <- TRUE
   }
 
-  eval_tbl <- candidate_rows %>%
+  response_filter <- ifelse(cfg$label == "JSDM", "COMMUNITY", cfg$label)
+
+  converged_tbl <- combined_df %>%
     mutate(
-      model_name = toupper(model_name),
-      Winner_CV = toupper(Winner_CV)
+      Response = toupper(as.character(Response)),
+      Model = toupper(as.character(Model)),
+      CV = toupper(as.character(CV)),
+      Converged = to_logical_safe(Converged),
+      LOOIC = suppressWarnings(as.numeric(LOOIC))
     ) %>%
-    left_join(
-      combined_df %>%
-        mutate(
-          Response = toupper(as.character(Response)),
-          Model = toupper(as.character(Model)),
-          CV = toupper(as.character(CV)),
-          Converged = to_logical_safe(Converged),
-          LOOIC = suppressWarnings(as.numeric(LOOIC))
-        ) %>%
-        filter(Response == cfg$label, Converged, !is.na(LOOIC)) %>%
-        select(Response, Model, CV, LOOIC, SE_LOOIC),
-      by = c("model_name" = "Model", "Winner_CV" = "CV")
-    ) %>%
-    filter(!is.na(LOOIC)) %>%
-    arrange(LOOIC)
+    filter(Response == response_filter, Converged, !is.na(LOOIC)) %>%
+    select(Model, CV, LOOIC, SE_LOOIC)
+
+  if (nrow(converged_tbl) == 0) return(NULL)
+
+  eval_tbl <- NULL
+
+  if (!is.null(candidate_rows) && nrow(candidate_rows) > 0) {
+    eval_tbl <- candidate_rows %>%
+      mutate(
+        model_name = toupper(model_name),
+        Winner_CV = toupper(Winner_CV)
+      ) %>%
+      left_join(
+        converged_tbl,
+        by = c("model_name" = "Model", "Winner_CV" = "CV")
+      ) %>%
+      filter(!is.na(LOOIC)) %>%
+      arrange(LOOIC)
+  }
+
+  if (is.null(eval_tbl) || nrow(eval_tbl) == 0) {
+    cat(sprintf("  [Fallback] %s: selecting global winner from converged combined results.\n", cfg$label))
+    eval_tbl <- converged_tbl %>%
+      transmute(
+        model_name = Model,
+        Winner_CV = CV,
+        LOOIC = LOOIC,
+        SE_LOOIC = SE_LOOIC
+      ) %>%
+      arrange(LOOIC)
+  }
 
   if (nrow(eval_tbl) == 0) return(NULL)
 

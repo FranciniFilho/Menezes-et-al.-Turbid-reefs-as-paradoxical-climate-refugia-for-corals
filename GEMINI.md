@@ -1,6 +1,6 @@
 # Project Overview
 
-This file provides guidance to Antigravity when working with code in this repository.
+This file provides guidance when working with code in this repository.
 
 # **Project Title:** Assessing Environmental Refugia for Coral Health: A Bayesian Analysis of *Mussismilia hispida* in the Abrolhos Bank
 
@@ -18,7 +18,7 @@ The analysis compares these responses across distinct habitats and the major ree
 
 ## **Central Hypothesis**
 
-We hypothesize that habitats characterized by the following conditions act as environmental **refugia**, promoting optimal coral conditions:
+We hypothesize that habitats, reefs and reef arcs characterized by the following conditions act as environmental **refugia**, promoting optimal coral conditions:
 - Greater thermal stability
 - Lower temperatures
 - Reduced light incidence
