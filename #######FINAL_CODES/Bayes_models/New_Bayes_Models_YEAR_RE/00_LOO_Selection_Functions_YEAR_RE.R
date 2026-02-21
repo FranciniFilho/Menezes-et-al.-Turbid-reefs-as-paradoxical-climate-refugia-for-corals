@@ -20,16 +20,65 @@ source("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. M
 # Base output directory for YEAR RE models (separate from original outputs)
 BASE_OUTPUT_DIR_YEAR_RE <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
 
-# Create base directory
-dir.create(BASE_OUTPUT_DIR_YEAR_RE, showWarnings = FALSE, recursive = TRUE)
+# Full-grid prior sensitivity output namespace (must remain isolated)
+BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
 
-# Subdirectories for YEAR RE models
+# Create base directories
+dir.create(BASE_OUTPUT_DIR_YEAR_RE, showWarnings = FALSE, recursive = TRUE)
+dir.create(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, showWarnings = FALSE, recursive = TRUE)
+
+# Subdirectories for canonical YEAR RE models
 output_dirs_year_re <- list(
   ZOIB_YEAR_RE    = file.path(BASE_OUTPUT_DIR_YEAR_RE, "ZOIB_Abundance_YEAR_RE/"),
   RGR             = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_RGR/"),
   HEALTH_YEAR_RE  = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE/"),
-  JSDM_YEAR_RE    = file.path(BASE_OUTPUT_DIR_YEAR_RE, "JSDM_Dirichlet_YEAR_RE/")
+  JSDM_YEAR_RE    = file.path(BASE_OUTPUT_DIR_YEAR_RE, "JSDM_Dirichlet_YEAR_RE/"),
+  GLOBAL_WINNERS  = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Global_Winners_YEAR_RE/"),
+  DETAIL_REPORTS  = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Winner_Detailed_Reports_YEAR_RE/"),
+  VAR_PART        = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Variance_Partitioning_YEAR_RE/"),
+  FIGURES         = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Bayesian_Figures_YEAR_RE_v7_CATEGORICAL/")
 )
+
+# Subdirectories for prior sensitivity YEAR RE models (isolated namespace)
+output_dirs_year_re_prior_sens <- list(
+  ZOIB_YEAR_RE    = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_ZOIB_YEAR_RE/"),
+  RGR             = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE/"),
+  HEALTH_YEAR_RE  = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/"),
+  JSDM_YEAR_RE    = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_JSDM_DIRICHLET_YEAR_RE/"),
+  GLOBAL_WINNERS  = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Global_Winners_YEAR_RE/"),
+  DETAIL_REPORTS  = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Winner_Detailed_Reports_YEAR_RE/"),
+  VAR_PART        = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Variance_Partitioning_YEAR_RE/"),
+  FIGURES         = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Figures_YEAR_RE_v7/")
+)
+
+for (d in c(output_dirs_year_re, output_dirs_year_re_prior_sens)) {
+  dir.create(d, showWarnings = FALSE, recursive = TRUE)
+}
+
+prior_scenarios_year_re <- c("WeaklyInformative", "Informative")
+
+env_to_int <- function(var_name, default_value) {
+  raw <- Sys.getenv(var_name, as.character(default_value))
+  parsed <- suppressWarnings(as.integer(raw))
+  if (is.na(parsed) || parsed < 1L) return(as.integer(default_value))
+  parsed
+}
+
+env_to_bool <- function(var_name, default_value = FALSE) {
+  raw <- tolower(trimws(Sys.getenv(var_name, ifelse(default_value, "true", "false"))))
+  raw %in% c("1", "true", "yes", "y", "on")
+}
+
+BRMS_CHAINS_DEFAULT <- env_to_int("BRMS_CHAINS_DEFAULT", 4L)
+BRMS_CORES_DEFAULT <- min(env_to_int("BRMS_CORES_DEFAULT", 4L), BRMS_CHAINS_DEFAULT)
+LOO_CORES_DEFAULT <- env_to_int("LOO_CORES_DEFAULT", max(1L, BRMS_CORES_DEFAULT - 1L))
+
+ENABLE_OPENCL_ZOIB <- env_to_bool("ENABLE_OPENCL_ZOIB", TRUE)
+BRMS_THREADS_PER_CHAIN_ZOIB <- env_to_int("BRMS_THREADS_PER_CHAIN_ZOIB", 2L)
+OPENCL_PLATFORM_ID <- env_to_int("OPENCL_PLATFORM_ID", 0L)
+OPENCL_DEVICE_ID <- env_to_int("OPENCL_DEVICE_ID", 0L)
+
+ZOIB_ACCELERATION_ACTIVE <- ENABLE_OPENCL_ZOIB
 
 # Raw health data path (with yearly observations)
 # Using list.files to avoid # character issues
@@ -765,6 +814,413 @@ model_combinations_year_re <- list(
 )
 
 # ============================================================================
+# SECTION 6A: PRIOR SENSITIVITY HELPERS
+# ============================================================================
+
+normalize_prior_scenario <- function(prior_tag) {
+  tag <- tolower(trimws(as.character(prior_tag)))
+  if (tag %in% c("weaklyinformative", "weakly_informative", "wi")) {
+    return("WeaklyInformative")
+  }
+  if (tag %in% c("informative", "inf")) {
+    return("Informative")
+  }
+  stop(sprintf("Unknown prior scenario: %s", prior_tag))
+}
+
+compute_habmerged_prior_mean <- function(data, fallback = -1.15) {
+  if (!"HABMERGED" %in% names(data)) {
+    warning("HABMERGED not found; using fallback")
+    return(fallback)
+  }
+
+  tab <- table(as.character(data$HABMERGED))
+  rr_n <- if ("RR" %in% names(tab)) as.numeric(tab[["RR"]]) else 0
+  tp_n <- if ("TP" %in% names(tab)) as.numeric(tab[["TP"]]) else 0
+  rrtp_n <- if ("RR_TP" %in% names(tab)) as.numeric(tab[["RR_TP"]]) else 0
+
+  if (rrtp_n > 0) {
+    warning("HAB already merged; cannot recover RR/TP proportions. Using fallback.")
+    return(fallback)
+  }
+
+  total <- rr_n + tp_n
+  if (total <= 0) {
+    warning("RR/TP counts unavailable; using fallback")
+    return(fallback)
+  }
+
+  w_rr <- rr_n / total
+  w_tp <- tp_n / total
+  (w_rr * -1.5) + (w_tp * -0.8)
+}
+
+get_dataset_specific_priors_zoib <- function(cv_label, hab_rrtp_mean) {
+  pri <- list(
+    CV_02 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_30 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_ALL = list(
+      PC1MAGNITUDE = c(0.5, 0.5),
+      PC2MAGNITUDE = c(-0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(0.0, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    )
+  )
+  if (!cv_label %in% names(pri)) stop(sprintf("Unknown cv_label: %s", cv_label))
+  pri[[cv_label]]
+}
+
+get_dataset_specific_priors_gaussian <- function(cv_label, response_var, hab_rrtp_mean) {
+  pri <- list(
+    CV_02 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      PC1INTERACAO = c(0.0, 0.5),
+      PC2INTERACAO = c(0.0, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_30 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      PC1INTERACAO = c(0.0, 0.5),
+      PC2INTERACAO = c(0.0, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_ALL = list(
+      PC1MAGNITUDE = c(0.5, 0.5),
+      PC2MAGNITUDE = c(-0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(0.0, 0.5),
+      PC1INTERACAO = c(0.0, 0.5),
+      PC2INTERACAO = c(0.0, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    )
+  )
+  if (!cv_label %in% names(pri)) stop(sprintf("Unknown cv_label: %s", cv_label))
+  pri[[cv_label]]
+}
+
+get_dataset_specific_priors_jsdm <- function(cv_label, hab_rrtp_mean) {
+  pri <- list(
+    CV_02 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_30 = list(
+      PC1MAGNITUDE = c(-0.5, 0.5),
+      PC2MAGNITUDE = c(0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(-0.5, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    ),
+    CV_ALL = list(
+      PC1MAGNITUDE = c(0.5, 0.5),
+      PC2MAGNITUDE = c(-0.5, 0.5),
+      PC1VARIABILITY = c(-0.5, 0.5),
+      PC2VARIABILITY = c(0.0, 0.5),
+      DEPTHM = c(0.2, 0.4),
+      HABMERGEDRR_TP = c(hab_rrtp_mean, 0.4)
+    )
+  )
+  if (!cv_label %in% names(pri)) stop(sprintf("Unknown cv_label: %s", cv_label))
+  pri[[cv_label]]
+}
+
+build_prior_set_zoib <- function(scenario_name, cv_label, formula_obj, data, hab_rrtp_mean) {
+  scenario_name <- normalize_prior_scenario(scenario_name)
+  if (scenario_name == "WeaklyInformative") return(priors_zoib_year_re)
+
+  prior_info <- get_prior(formula_obj, data = data, family = zero_one_inflated_beta())
+  pvals <- get_dataset_specific_priors_zoib(cv_label, hab_rrtp_mean)
+
+  pri <- c(prior(normal(0, 2), class = "Intercept"))
+
+  sd_groups <- unique(prior_info$group[prior_info$class == "sd" & prior_info$group != ""])
+  for (g in sd_groups) {
+    pri <- c(pri, prior(exponential(1), class = "sd", group = g))
+  }
+
+  if ("sds" %in% prior_info$class) {
+    pri <- c(pri, prior(normal(0, 1), class = "sds"))
+  }
+
+  b_coefs <- unique(prior_info$coef[prior_info$class == "b" & prior_info$coef != ""])
+  for (coef_name in b_coefs) {
+    if (coef_name %in% names(pvals)) {
+      mu <- pvals[[coef_name]][1]
+      sd <- pvals[[coef_name]][2]
+      pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
+    } else {
+      pri <- c(pri, prior(normal(0, 0.5), class = "b", coef = coef_name))
+    }
+  }
+
+  pri
+}
+
+build_prior_set_gaussian <- function(scenario_name, cv_label, response_var, formula_obj, data, hab_rrtp_mean) {
+  scenario_name <- normalize_prior_scenario(scenario_name)
+  if (scenario_name == "WeaklyInformative") return(priors_gaussian_year_re)
+
+  prior_info <- get_prior(formula_obj, data = data, family = gaussian())
+  pvals <- get_dataset_specific_priors_gaussian(cv_label, response_var, hab_rrtp_mean)
+
+  pri <- c(prior(normal(0, 2), class = "Intercept"))
+
+  if ("sigma" %in% prior_info$class) {
+    pri <- c(pri, prior(exponential(1), class = "sigma"))
+  }
+
+  sd_groups <- unique(prior_info$group[prior_info$class == "sd" & prior_info$group != ""])
+  for (g in sd_groups) {
+    pri <- c(pri, prior(exponential(1), class = "sd", group = g))
+  }
+
+  if ("sds" %in% prior_info$class) {
+    pri <- c(pri, prior(normal(0, 1), class = "sds"))
+  }
+
+  b_coefs <- unique(prior_info$coef[prior_info$class == "b" & prior_info$coef != ""])
+  for (coef_name in b_coefs) {
+    if (coef_name %in% names(pvals)) {
+      mu <- pvals[[coef_name]][1]
+      sd <- pvals[[coef_name]][2]
+      pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
+    } else {
+      pri <- c(pri, prior(normal(0, 0.5), class = "b", coef = coef_name))
+    }
+  }
+
+  pri
+}
+
+build_prior_set_jsdm <- function(scenario_name, cv_label, formula_obj, data, hab_rrtp_mean) {
+  scenario_name <- normalize_prior_scenario(scenario_name)
+  if (scenario_name == "WeaklyInformative") return(priors_jsdm_year_re)
+
+  prior_info <- get_prior(formula_obj, data = data, family = dirichlet())
+  pvals <- get_dataset_specific_priors_jsdm(cv_label, hab_rrtp_mean)
+
+  pri <- c(prior(normal(0, 2), class = "Intercept"))
+
+  if ("phi" %in% prior_info$class) {
+    pri <- c(pri, prior(exponential(1), class = "phi"))
+  }
+
+  sd_rows <- prior_info[prior_info$class == "sd" & prior_info$group != "", , drop = FALSE]
+  if (nrow(sd_rows) > 0) {
+    for (i in seq_len(nrow(sd_rows))) {
+      pri <- c(pri, prior(exponential(1), class = "sd", group = sd_rows$group[i]))
+    }
+  }
+
+  b_rows <- prior_info[prior_info$class == "b" & prior_info$coef != "", , drop = FALSE]
+  if (nrow(b_rows) > 0) {
+    for (i in seq_len(nrow(b_rows))) {
+      coef_name <- b_rows$coef[i]
+      dpar_name <- b_rows$dpar[i]
+      if (coef_name %in% names(pvals)) {
+        mu <- pvals[[coef_name]][1]
+        sd <- pvals[[coef_name]][2]
+      } else {
+        mu <- 0
+        sd <- 0.5
+      }
+      if (!is.na(dpar_name) && nzchar(dpar_name)) {
+        pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name, dpar = dpar_name))
+      } else {
+        pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
+      }
+    }
+  }
+
+  pri
+}
+
+load_or_fit_model_year_re_with_prior <- function(model_name, cv_name, model_type,
+                                                 formula, data, family, prior,
+                                                 out_dir, brms_args, prior_tag) {
+  if (missing(prior_tag) || is.null(prior_tag) || !nzchar(prior_tag)) {
+    stop("prior_tag is required to avoid cache collision")
+  }
+
+  prior_norm <- tolower(gsub("[^a-z0-9]", "", normalize_prior_scenario(prior_tag)))
+  model_filename <- sprintf("%s_%s_%s_prior_%s.rds",
+                            tolower(model_type), tolower(model_name), cv_name, prior_norm)
+  model_path <- file.path(out_dir, model_filename)
+
+  if (file.exists(model_path)) {
+    fit <- readRDS(model_path)
+    return(list(fit = fit, cached = TRUE, path = model_path, prior_tag = normalize_prior_scenario(prior_tag)))
+  }
+
+  sanitize_brms_args <- function(args_obj) {
+    args_obj$opencl <- NULL
+    args_obj$threads <- NULL
+    args_obj
+  }
+
+  is_acceleration_error <- function(msg) {
+    grepl("opencl|gpu|thread|tbb|clblast|rstan", msg, ignore.case = TRUE)
+  }
+
+  fit_once <- function(args_obj) {
+    do.call(brm, c(
+      list(formula = formula, data = data, family = family, prior = prior),
+      args_obj
+    ))
+  }
+
+  start_time <- Sys.time()
+  fit <- tryCatch({
+    fit_once(brms_args)
+  }, error = function(e) {
+    has_acceleration <- !is.null(brms_args$opencl) || !is.null(brms_args$threads)
+    if (has_acceleration && is_acceleration_error(e$message)) {
+      message(sprintf("Acceleration fit failed (%s): %s", model_filename, e$message))
+      message("Retrying with CPU-only args (opencl/threading disabled)...")
+      ZOIB_ACCELERATION_ACTIVE <<- FALSE
+      retry_args <- sanitize_brms_args(brms_args)
+      return(tryCatch({
+        fit_once(retry_args)
+      }, error = function(e2) {
+        message(sprintf("CPU fallback failed (%s): %s", model_filename, e2$message))
+        NULL
+      }))
+    }
+    message(sprintf("Model fit failed (%s): %s", model_filename, e$message))
+    NULL
+  })
+
+  if (is.null(fit)) {
+    return(list(
+      fit = NULL,
+      cached = FALSE,
+      path = model_path,
+      prior_tag = normalize_prior_scenario(prior_tag),
+      error = TRUE
+    ))
+  }
+
+  elapsed_mins <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+  saveRDS(fit, model_path)
+
+  list(
+    fit = fit,
+    cached = FALSE,
+    path = model_path,
+    prior_tag = normalize_prior_scenario(prior_tag),
+    elapsed_mins = elapsed_mins
+  )
+}
+
+compute_prior_sensitivity_summary <- function(results_df, model_family_label) {
+  if (is.null(results_df) || nrow(results_df) == 0 || !"Prior_Scenario" %in% names(results_df)) {
+    return(data.frame())
+  }
+
+  tbl <- results_df
+  tbl$Prior_Scenario <- vapply(tbl$Prior_Scenario, normalize_prior_scenario, character(1))
+
+  wi <- tbl[tbl$Prior_Scenario == "WeaklyInformative", , drop = FALSE]
+  inf <- tbl[tbl$Prior_Scenario == "Informative", , drop = FALSE]
+  if (nrow(wi) == 0 || nrow(inf) == 0) {
+    return(data.frame())
+  }
+
+  best_wi <- wi %>%
+    group_by(Response, CV) %>%
+    arrange(LOOIC, .by_group = TRUE) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(Best_Model_WI = Model, LOOIC_WI = LOOIC, SE_LOOIC_WI = SE_LOOIC)
+
+  best_inf <- inf %>%
+    group_by(Response, CV) %>%
+    arrange(LOOIC, .by_group = TRUE) %>%
+    slice(1) %>%
+    ungroup() %>%
+    mutate(Best_Model_INF = Model, LOOIC_INF = LOOIC, SE_LOOIC_INF = SE_LOOIC)
+
+  joined <- best_wi %>%
+    select(Response, CV, Best_Model_WI, LOOIC_WI, SE_LOOIC_WI) %>%
+    inner_join(
+      best_inf %>% select(Response, CV, Best_Model_INF, LOOIC_INF, SE_LOOIC_INF),
+      by = c("Response", "CV")
+    )
+
+  if (nrow(joined) == 0) {
+    return(data.frame())
+  }
+
+  joined <- joined %>%
+    mutate(
+      Model_Family = model_family_label,
+      elpd_diff = (-0.5 * LOOIC_INF) - (-0.5 * LOOIC_WI),
+      se_diff = 0.5 * sqrt((SE_LOOIC_INF^2) + (SE_LOOIC_WI^2)),
+      z_score = ifelse(!is.na(se_diff) & se_diff > 0, abs(elpd_diff) / se_diff, NA_real_),
+      Impact_Class = case_when(
+        is.na(se_diff) | se_diff <= 0 ~ "Uncertain",
+        z_score < 1.0 ~ "Negligible",
+        z_score < 2.0 ~ "Moderate",
+        z_score >= 2.0 ~ "Strong",
+        TRUE ~ "Uncertain"
+      ),
+      Direction = case_when(
+        elpd_diff > 0 ~ "Informative better",
+        elpd_diff < 0 ~ "WeaklyInformative better",
+        TRUE ~ "Tie"
+      )
+    ) %>%
+    select(
+      Response,
+      Model_Family,
+      CV,
+      Best_Model_WI,
+      Best_Model_INF,
+      elpd_diff,
+      se_diff,
+      z_score,
+      Impact_Class,
+      Direction
+    )
+
+  as.data.frame(joined)
+}
+
+# ============================================================================
+# SECTION 6: MODEL FITTING WITH CACHE (YEAR RE)
+# ============================================================================
+
+# ============================================================================
 # SECTION 6: MODEL FITTING WITH CACHE (YEAR RE)
 # ============================================================================
 
@@ -1356,7 +1812,7 @@ safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
   cat(sprintf("  ???? Calculating LOO for %s_%s...\n", model_name, cv_label))
 
   loo_result <- tryCatch({
-    loo_obj <- loo(fit, cores = 4)
+    loo_obj <- loo(fit, cores = LOO_CORES_DEFAULT)
 
     # Check Pareto k
     k_vals <- loo_obj$diagnostics$pareto_k
@@ -1366,7 +1822,7 @@ safe_loo <- function(fit, model_name, cv_label, use_moment_match = TRUE) {
       cat(sprintf("  ??? %d observations with Pareto k > 0.7. Trying moment_match...\n", n_high_k))
 
       loo_obj <- tryCatch({
-        loo(fit, cores = 4, moment_match = TRUE, k_threshold = 0.7)
+        loo(fit, cores = LOO_CORES_DEFAULT, moment_match = TRUE, k_threshold = 0.7)
       }, error = function(e) {
         cat("  ??? moment_match failed. Using original LOO.\n")
         loo_obj
@@ -1540,23 +1996,36 @@ priors_jsdm_year_re <- NULL
 # iter: 8000 (was 4000), warmup: 4000 (was 2000), adapt_delta: 0.99 (was 0.97)
 brms_args_year_re <- list(
   backend = "cmdstanr",
-  cores = 4,
+  cores = BRMS_CORES_DEFAULT,
   iter = 8000,
   warmup = 4000,
-  chains = 4,
+  chains = BRMS_CHAINS_DEFAULT,
   control = list(adapt_delta = 0.99, max_treedepth = 12),
   refresh = 500,
   save_pars = save_pars(all = TRUE)
 )
 
+brms_args_zoib_year_re <- brms_args_year_re
+if (ENABLE_OPENCL_ZOIB) {
+  brms_args_zoib_year_re$threads <- threading(BRMS_THREADS_PER_CHAIN_ZOIB)
+  brms_args_zoib_year_re$opencl <- opencl(ids = c(OPENCL_PLATFORM_ID, OPENCL_DEVICE_ID))
+}
+
+get_brms_args_zoib_year_re <- function() {
+  if (isTRUE(ZOIB_ACCELERATION_ACTIVE) && ENABLE_OPENCL_ZOIB) {
+    return(brms_args_zoib_year_re)
+  }
+  brms_args_year_re
+}
+
 # More conservative configuration for JSDM YEAR RE
 # OPTIMIZED: Faster but still robust (iter 4000, adapt_delta 0.95, max_treedepth 12)
 brms_args_jsdm_year_re <- list(
   backend = "cmdstanr",
-  cores = 4,
+  cores = BRMS_CORES_DEFAULT,
   iter = 4000,
   warmup = 2000,
-  chains = 4,
+  chains = BRMS_CHAINS_DEFAULT,
   control = list(adapt_delta = 0.95, max_treedepth = 12),
   refresh = 500,
   save_pars = save_pars(all = TRUE)
@@ -1576,6 +2045,71 @@ dataset_paths_abundance <- list(
   CV_30 = file.path(RESULTS_DIR, "#####output_local_PCA_CV_30_FINAL/dados_abundancia_integrados_long_format.csv"),
   CV_ALL = file.path(RESULTS_DIR, "#####output_local_PCA_CV_all_FINAL/dados_abundancia_integrados_long_format.csv")
 )
+
+resolve_year_re_namespace <- function(run_namespace = c("canonical", "prior_sens_fullgrid"),
+                                      prior_scenario_target = "WeaklyInformative") {
+  namespace <- match.arg(run_namespace)
+  scenario <- normalize_prior_scenario(prior_scenario_target)
+  if (namespace == "canonical") {
+    return(list(
+      run_namespace = namespace,
+      prior_scenario_target = scenario,
+      base_output_dir = BASE_OUTPUT_DIR_YEAR_RE,
+      output_dirs = output_dirs_year_re
+    ))
+  }
+
+  list(
+    run_namespace = namespace,
+    prior_scenario_target = scenario,
+    base_output_dir = BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS,
+    output_dirs = output_dirs_year_re_prior_sens
+  )
+}
+
+run_prior_sensitivity_smoke_tests <- function(formula_obj = NULL,
+                                              data_obj = NULL,
+                                              jsdm_formula_obj = NULL,
+                                              jsdm_data_obj = NULL) {
+  stopifnot(!is.null(get_dataset_specific_priors_zoib("CV_02", -1.15)))
+  stopifnot(!is.null(get_dataset_specific_priors_zoib("CV_ALL", -1.15)))
+
+  p_cv02 <- get_dataset_specific_priors_zoib("CV_02", -1.15)
+  p_cvall <- get_dataset_specific_priors_zoib("CV_ALL", -1.15)
+  stopifnot(p_cv02$PC1MAGNITUDE[1] == -0.5)
+  stopifnot(p_cvall$PC1MAGNITUDE[1] == 0.5)
+  stopifnot(p_cv02$PC2MAGNITUDE[1] == 0.5)
+  stopifnot(p_cvall$PC2MAGNITUDE[1] == -0.5)
+
+  if (!is.null(formula_obj) && !is.null(data_obj)) {
+    pri_g <- build_prior_set_gaussian("Informative", "CV_02", "HEALTH_PC1", formula_obj, data_obj, -1.15)
+    pri_g_df <- as.data.frame(pri_g)
+    stopifnot(any(pri_g_df$class == "sigma"))
+    stopifnot(any(pri_g_df$class == "sd"))
+
+    pri_z_wi <- build_prior_set_zoib("WeaklyInformative", "CV_02", formula_obj, data_obj, -1.15)
+    pri_z_inf <- build_prior_set_zoib("Informative", "CV_02", formula_obj, data_obj, -1.15)
+    f1 <- load_or_fit_model_year_re_with_prior(
+      "FULL", "CV_02", "ZOIB_YEAR_RE", formula_obj, data_obj,
+      zero_one_inflated_beta(), pri_z_wi, tempdir(), brms_args_year_re,
+      prior_tag = "WeaklyInformative"
+    )$path
+    f2 <- load_or_fit_model_year_re_with_prior(
+      "FULL", "CV_02", "ZOIB_YEAR_RE", formula_obj, data_obj,
+      zero_one_inflated_beta(), pri_z_inf, tempdir(), brms_args_year_re,
+      prior_tag = "Informative"
+    )$path
+    stopifnot(f1 != f2)
+  }
+
+  if (!is.null(jsdm_formula_obj) && !is.null(jsdm_data_obj)) {
+    pri_j <- build_prior_set_jsdm("Informative", "CV_02", jsdm_formula_obj, jsdm_data_obj, -1.15)
+    pri_j_df <- as.data.frame(pri_j)
+    stopifnot(any(pri_j_df$class == "b"))
+  }
+
+  TRUE
+}
 
 # ============================================================================
 # END OF 00_LOO_Selection_Functions_YEAR_RE.R

@@ -69,10 +69,41 @@ get_current_script_dir <- function() {
 }
 
 script_dir_YEAR_RE_v7 <- get_current_script_dir()
-global_winner_directory_YEAR_RE_v7 <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE"
 consolidation_script_YEAR_RE_v7 <- file.path(script_dir_YEAR_RE_v7, "05_CONSOLIDATE_GLOBAL_WINNERS_YEAR_RE.R")
 
-output_dir_YEAR_RE_v7 <- "C:/Users/rbfra/OneDrive/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL"
+normalize_prior_scenario_v7 <- function(prior_tag) {
+    tag <- tolower(trimws(as.character(prior_tag)))
+    if (tag %in% c("weaklyinformative", "weakly_informative", "wi")) return("WeaklyInformative")
+    if (tag %in% c("informative", "inf")) return("Informative")
+    stop(sprintf("Unknown prior scenario: %s", prior_tag))
+}
+
+resolve_viz_namespace_v7 <- function(run_namespace = c("canonical", "prior_sens_fullgrid"),
+                                     prior_scenario_target = "WeaklyInformative") {
+    run_namespace <- match.arg(run_namespace)
+    prior_scenario_target <- normalize_prior_scenario_v7(prior_scenario_target)
+    if (run_namespace == "canonical") {
+        return(list(
+            run_namespace = run_namespace,
+            prior_scenario_target = prior_scenario_target,
+            global_winner_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE",
+            output_dir = "C:/Users/rbfra/OneDrive/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL"
+        ))
+    }
+    list(
+        run_namespace = run_namespace,
+        prior_scenario_target = prior_scenario_target,
+        global_winner_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Global_Winners_YEAR_RE",
+        output_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Figures_YEAR_RE_v7"
+    )
+}
+
+RUN_NAMESPACE_V7 <- Sys.getenv("RUN_NAMESPACE", "canonical")
+PRIOR_SCENARIO_TARGET_V7 <- Sys.getenv("PRIOR_SCENARIO_TARGET", "WeaklyInformative")
+VIZ_NAMESPACE_CFG_V7 <- resolve_viz_namespace_v7(RUN_NAMESPACE_V7, PRIOR_SCENARIO_TARGET_V7)
+
+global_winner_directory_YEAR_RE_v7 <- VIZ_NAMESPACE_CFG_V7$global_winner_dir
+output_dir_YEAR_RE_v7 <- VIZ_NAMESPACE_CFG_V7$output_dir
 dir.create(output_dir_YEAR_RE_v7, showWarnings = FALSE, recursive = TRUE)
 
 cat("\n", rep("=", 80), "\n", sep = "")
@@ -80,6 +111,10 @@ cat("MASTER VISUALIZATION PIPELINE V7 - YEAR RANDOM EFFECT MODELS (CATEGORICAL)\
 cat("V7 NEW: Categorical PDPs (HABMERGED, ARCH, REEF)\n")
 cat("V6 Inherited: ARCH interactions, HABMERGED display, YEAR SD annotation\n")
 cat("Input mode: WINNER_GLOBAL_<response>.rds only\n")
+cat(sprintf("Namespace: %s\n", VIZ_NAMESPACE_CFG_V7$run_namespace))
+if (VIZ_NAMESPACE_CFG_V7$run_namespace == "prior_sens_fullgrid") {
+    cat(sprintf("Prior scenario target: %s\n", VIZ_NAMESPACE_CFG_V7$prior_scenario_target))
+}
 cat(rep("=", 80), "\n", sep = "")
 cat("Output directory:", output_dir_YEAR_RE_v7, "\n")
 cat("Global winner directory:", global_winner_directory_YEAR_RE_v7, "\n")
@@ -1889,7 +1924,10 @@ if (file.exists(consolidation_script_YEAR_RE_v7)) {
     cat("\n--- Atualizando WINNER_GLOBAL antes das figuras ---\n")
     source(consolidation_script_YEAR_RE_v7)
     if (exists("build_global_winners_year_re")) {
-        build_global_winners_year_re()
+        build_global_winners_year_re(
+            run_namespace = VIZ_NAMESPACE_CFG_V7$run_namespace,
+            prior_scenario_target = VIZ_NAMESPACE_CFG_V7$prior_scenario_target
+        )
     }
 } else {
     cat(sprintf("\nâš  Script de consolidaÃ§Ã£o nÃ£o encontrado: %s\n", consolidation_script_YEAR_RE_v7))

@@ -1,209 +1,133 @@
 # ============================================================================
 # 02b_Gaussian_Health_YEAR_RE_Full_LOO_Selection.R
 # ============================================================================
-# Gaussian models for Health (PC1, PC2) with YEAR Random Effect
-# Full LOO-based model selection across HAB ?? DEPTH ?? CV scenarios
-# YEAR Random Effect: YES - (1|REEF) + (1|YEAR) - CROSSED (not nested!)
-# ============================================================================
-# Source: Based on 02_Gaussian_Health_RGR_Full_LOO_Selection.R
-# ============================================================================
-# CHANGES FROM ORIGINAL:
-# - Now uses load_or_fit_model_year_re() for caching
-# - Uses safe_loo() for robust LOO calculation
-# - Uses check_convergence() for validation
-# - Fixed loo_compare() to use list of loo objects (not brmsfit)
+# Full-grid prior sensitivity for Gaussian Health YEAR_RE models
+# Runs WeaklyInformative and Informative priors for all candidate models and CV
+# Writes outputs only to PS_FULLGRID namespace
 # ============================================================================
 
-# Set working directory
 setwd("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/")
-
-# Source extended functions (includes original + new cache/safe_loo functions)
 source("00_LOO_Selection_Functions_YEAR_RE.R")
 
-# Load required libraries
-library(brms)
-library(cmdstanr)
-library(loo)
-library(dplyr)
+suppressPackageStartupMessages({
+  library(brms)
+  library(cmdstanr)
+  library(loo)
+  library(dplyr)
+})
 
-# Set options
-options(mc.cores = 4)
+options(mc.cores = BRMS_CORES_DEFAULT)
 set.seed(42)
 
-# ============================================================================
-# MODEL CONFIGURATIONS
-# ============================================================================
-
-# Response variables (Health ONLY - NO RGR)
 response_variables <- c("HEALTH_PC1", "HEALTH_PC2")
-
-# CV scenarios
 cv_scenarios <- c("CV_02", "CV_30", "CV_ALL")
+prior_scenarios <- prior_scenarios_year_re
 
-# Abundance data paths (contain YEAR column - needed for merging)
 dataset_paths_abundance <- list(
   CV_02 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/#####output_local_PCA_CV_2_FINAL/dados_abundancia_integrados_long_format.csv"),
   CV_30 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/#####output_local_PCA_CV_30_FINAL/dados_abundancia_integrados_long_format.csv"),
   CV_ALL = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/#####output_local_PCA_CV_all_FINAL/dados_abundancia_integrados_long_format.csv")
 )
 
-# Final data paths (contain PC1_INTERACAO, PC2_INTERACAO - NEW)
 dataset_paths_final <- list(
   CV_02 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_2/dados_finais_para_modelagem_com_ARCH.csv"),
   CV_30 = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_30/dados_finais_para_modelagem_com_ARCH.csv"),
   CV_ALL = file.path(PROJECT_ROOT, "#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_all/dados_finais_para_modelagem_com_ARCH.csv")
 )
 
-# Output directory
-base_output_dir <- output_dirs_year_re$HEALTH_YEAR_RE
-dir.create(base_output_dir, showWarnings = FALSE, recursive = TRUE)
+base_output_dir <- output_dirs_year_re_prior_sens$HEALTH_YEAR_RE
+dir.create(base_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-# ============================================================================
-# MAIN MODELING LOOP
-# ============================================================================
-
-cat("\n")
-cat("??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n")
-cat("???   GAUSSIAN HEALTH MODELS WITH YEAR RANDOM EFFECT (CROSSED)     ???\n")
-cat("???   Full LOO-based Model Selection                               ???\n")
-cat("???   Using: load_or_fit_model, safe_loo, check_convergence       ???\n")
-cat("??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n")
-cat("\n")
-
-# Store all results for summary
 all_results <- data.frame()
 cv_window_loo_registry <- list()
 cv_window_convergence_registry <- list()
 
 for (cv_label in cv_scenarios) {
+  prepared_data <- tryCatch({
+    prepare_health_data_with_year(
+      excel_path = RAW_HEALTH_EXCEL,
+      pca_scores_path = PCA_SCORES_PATH,
+      env_data_path = dataset_paths_abundance[[cv_label]],
+      final_data_path = dataset_paths_final[[cv_label]],
+      cv_label = cv_label
+    )
+  }, error = function(e) {
+    cat(sprintf("Data preparation failed for %s: %s
+", cv_label, e$message))
+    NULL
+  })
+  if (is.null(prepared_data)) next
+
+  year_check <- check_year_levels(prepared_data)
+  if (!year_check$valid) next
+
+  hab_rrtp_mean <- compute_habmerged_prior_mean(prepared_data, fallback = -1.15)
+
   for (response_var in response_variables) {
+    data_resp <- prepared_data[!is.na(prepared_data[[response_var]]), , drop = FALSE]
+    if (nrow(data_resp) == 0) next
 
-    cat(sprintf("\n?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n"))
-    cat(sprintf("  PROCESSING: %s - %s\n", cv_label, response_var))
-    cat(sprintf("?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n\n"))
+    for (scenario_name in prior_scenarios) {
+      scenario_name <- normalize_prior_scenario(scenario_name)
+      scenario_tag <- tolower(gsub("[^a-z0-9]", "", scenario_name))
 
-    # Create output directory for this response
-    response_output_dir <- file.path(base_output_dir, response_var, cv_label)
-    dir.create(response_output_dir, showWarnings = FALSE, recursive = TRUE)
+      out_dir <- file.path(base_output_dir, response_var, cv_label, scenario_name)
+      dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-    # Prepare data with YEAR (from raw Excel)
-    prepared_data <- tryCatch({
-      prepare_health_data_with_year(
-        excel_path = RAW_HEALTH_EXCEL,
-        pca_scores_path = PCA_SCORES_PATH,
-        env_data_path = dataset_paths_abundance[[cv_label]],
-        final_data_path = dataset_paths_final[[cv_label]],  # NEW: for interaction variables
-        cv_label = cv_label
-      )
-    }, error = function(e) {
-      cat(sprintf("  ??? Data preparation failed: %s\n", e$message))
-      NULL
-    })
+      loo_list <- list()
+      convergence_map <- list()
 
-    if (is.null(prepared_data)) {
-      cat(sprintf("    ??? Skipping %s - %s due to data preparation error\n", cv_label, response_var))
-      next
-    }
+      for (model_config in model_combinations_year_re) {
+        formula_obj <- make_gaussian_formula_year_re(
+          response_var = response_var,
+          include_hab = model_config$include_hab,
+          include_depth = model_config$include_depth,
+          include_interaction_pca = model_config$include_interaction_pca
+        )
 
-    # Check YEAR validity
-    year_check <- check_year_levels(prepared_data)
-    if (!year_check$valid) {
-      warning(sprintf("Skipping %s - %s: %s", cv_label, response_var, year_check$summary))
-      next
-    }
+        priors_to_use <- build_prior_set_gaussian(
+          scenario_name = scenario_name,
+          cv_label = cv_label,
+          response_var = response_var,
+          formula_obj = formula_obj,
+          data = data_resp,
+          hab_rrtp_mean = hab_rrtp_mean
+        )
 
-    # Verify response variable exists
-    if (!(response_var %in% names(prepared_data))) {
-      cat(sprintf("    ??? Response variable %s not found in data\n", response_var))
-      next
-    }
-
-    # Remove NA values for this response
-    prepared_data <- prepared_data[!is.na(prepared_data[[response_var]]), ]
-    cat(sprintf("    Data after NAs removed: N=%d\n", nrow(prepared_data)))
-
-    # Data summary
-    cat(sprintf("    Response range: [%.2f, %.2f]\n",
-                min(prepared_data[[response_var]], na.rm = TRUE),
-                max(prepared_data[[response_var]], na.rm = TRUE)))
-    cat(sprintf("    REEFs: %d, HABMERGED levels: %d, YEARS: %d\n",
-                length(unique(prepared_data$REEF)),
-                length(unique(prepared_data$HABMERGED)),
-                length(unique(prepared_data$YEAR))))
-
-    # Store LOO objects for comparison
-    loo_list <- list()
-    convergence_map <- list()
-    model_info_list <- list()
-
-    for (model_config in model_combinations_year_re) {
-
-      model_name <- sprintf("%s_%s_%s", response_var, model_config$name, cv_label)
-
-      cat(sprintf("\n????????? Model: %s ?????????\n", model_config$name))
-      cat(sprintf("    %s\n", model_config$description))
-
-      # Build formula with CROSSED YEAR random effect
-      formula_obj <- make_gaussian_formula_year_re(
-        response_var = response_var,
-        include_hab = model_config$include_hab,
-        include_depth = model_config$include_depth,
-        include_interaction_pca = model_config$include_interaction_pca  # NEW
-      )
-
-      cat(sprintf("    Formula: %s\n\n", deparse(formula_obj)[1]))
-
-      # Fit or load model from cache
-      result <- tryCatch({
-        load_or_fit_model_year_re(
+        result <- load_or_fit_model_year_re_with_prior(
           model_name = model_config$name,
           cv_name = cv_label,
           model_type = sprintf("Gaussian_%s_YEAR_RE", response_var),
           formula = formula_obj,
-          data = prepared_data,
+          data = data_resp,
           family = gaussian(),
-          prior = priors_gaussian_year_re,
-          out_dir = response_output_dir,
-          brms_args = brms_args_year_re
+          prior = priors_to_use,
+          out_dir = out_dir,
+          brms_args = brms_args_year_re,
+          prior_tag = scenario_name
         )
-      }, error = function(e) {
-        cat(sprintf("  ??? Error fitting model: %s\n", e$message))
-        list(fit = NULL, cached = FALSE, error = e$message)
-      })
+        if (is.null(result$fit)) next
 
-      if (is.null(result$fit)) {
-        next
-      }
+        conv_check <- check_convergence(result$fit, model_config$name, cv_label)
+        loo_result <- safe_loo(result$fit, model_config$name, cv_label)
+        convergence_map[[model_config$name]] <- isTRUE(conv_check$passed)
+        if (is.null(loo_result)) next
 
-      # Check convergence
-      conv_check <- tryCatch({
-        check_convergence(result$fit, model_config$name, cv_label)
-      }, error = function(e) {
-        cat(sprintf("  ??? Convergence check error: %s\n", e$message))
-        list(passed = FALSE, rhat_max = NA, ess_bulk_min = NA,
-             ess_tail_min = NA, n_divergent = NA)
-      })
-
-      # Calculate LOO with safe_loo (handles Pareto k issues)
-      loo_result <- safe_loo(result$fit, model_config$name, cv_label)
-      convergence_map[[model_config$name]] <- isTRUE(conv_check$passed)
-
-      if (!is.null(loo_result)) {
         loo_list[[model_config$name]] <- loo_result
-        key_name <- sprintf("%s__%s", response_var, model_config$name)
-        if (is.null(cv_window_loo_registry[[key_name]])) {
-          cv_window_loo_registry[[key_name]] <- list()
-          cv_window_convergence_registry[[key_name]] <- list()
+        reg_key <- sprintf("%s__%s__%s", response_var, model_config$name, scenario_name)
+        if (is.null(cv_window_loo_registry[[reg_key]])) {
+          cv_window_loo_registry[[reg_key]] <- list()
+          cv_window_convergence_registry[[reg_key]] <- list()
         }
-        cv_window_loo_registry[[key_name]][[cv_label]] <- loo_result
-        cv_window_convergence_registry[[key_name]][[cv_label]] <- isTRUE(conv_check$passed)
+        cv_window_loo_registry[[reg_key]][[cv_label]] <- loo_result
+        cv_window_convergence_registry[[reg_key]][[cv_label]] <- isTRUE(conv_check$passed)
 
-        # Store results
-        result_row <- data.frame(
+        all_results <- rbind(all_results, data.frame(
           Model_Type = sprintf("Gaussian_%s_YEAR_RE", response_var),
           Response = response_var,
           Model = model_config$name,
           CV = cv_label,
+          Prior_Scenario = scenario_name,
           LOOIC = loo_result$estimates["looic", "Estimate"],
           SE_LOOIC = loo_result$estimates["looic", "SE"],
           Converged = conv_check$passed,
@@ -214,120 +138,73 @@ for (cv_label in cv_scenarios) {
           Cached = result$cached,
           Elapsed_Mins = ifelse(is.null(result$elapsed_mins), NA, result$elapsed_mins),
           stringsAsFactors = FALSE
-        )
-        all_results <- rbind(all_results, result_row)
+        ))
       }
 
-      # Store model info
-      model_info_list[[model_name]] <- list(
-        model_id = model_name,
-        response = response_var,
-        cv = cv_label,
-        combination = model_config$name,
-        fit = result$fit,
-        loo = loo_result,
-        convergence = conv_check,
-        cached = result$cached,
-        path = result$path
-      )
-
-      # Garbage collection between models
-      gc()
-    }
-
-    # ======================================================================
-    # COMPARE MODELS WITHIN CV
-    # ======================================================================
-
-    if (length(loo_list) > 1) {
-      cat(sprintf("\n????????? LOO Comparison for %s_%s ?????????\n", response_var, cv_label))
-      cv_comparison <- tryCatch({
-        compare_loo_within_cv(loo_list, cv_label, convergence_map)
-      }, error = function(e) {
-        cat(sprintf("  ??? Comparison error: %s\n", e$message))
-        NULL
-      })
-
-      # Save winner model copy
-      if (!is.null(cv_comparison)) {
-        winner_path <- file.path(response_output_dir,
-                                 sprintf("WINNER_%s_%s.rds",
-                                         tolower(response_var),
-                                         tolower(cv_label)))
-        source_name <- cv_comparison$winner
-        source_path <- file.path(response_output_dir,
-                                 sprintf("gaussian_%s_year_re_%s_%s.rds",
-                                         tolower(response_var),
-                                         tolower(source_name), cv_label))
-        if (file.exists(source_path) && !file.exists(winner_path)) {
-          file.copy(source_path, winner_path)
-          cat(sprintf("  ???? Winner saved: %s\n", basename(winner_path)))
+      if (length(loo_list) > 1) {
+        cv_comp <- compare_loo_within_cv(loo_list, paste(cv_label, response_var, scenario_name, sep = "_"), convergence_map)
+        if (!is.null(cv_comp)) {
+          winner_path <- file.path(out_dir, sprintf("WINNER_%s_%s_%s.rds", tolower(response_var), cv_label, scenario_name))
+          src_path <- file.path(
+            out_dir,
+            sprintf("gaussian_%s_year_re_%s_%s_prior_%s.rds", tolower(response_var), tolower(cv_comp$winner), cv_label, scenario_tag)
+          )
+          if (file.exists(src_path)) {
+            file.copy(src_path, winner_path, overwrite = TRUE)
+          }
         }
       }
     }
   }
 }
 
-# ============================================================================
-# FORMAL LOO COMPARISON ACROSS CV WINDOWS (same model specification)
-# ============================================================================
-cv_window_summary <- data.frame()
-for (key_name in names(cv_window_loo_registry)) {
-  comparison_path <- file.path(
-    base_output_dir,
-    sprintf("CV_WINDOW_LOO_HEALTH_%s.csv", tolower(gsub("__", "_", key_name)))
-  )
-  cv_comp <- compare_cv_windows_formal_loo(
-    loo_by_cv = cv_window_loo_registry[[key_name]],
-    context_label = sprintf("HEALTH_%s", key_name),
-    converged_by_cv = cv_window_convergence_registry[[key_name]],
-    out_csv_path = comparison_path
-  )
-  cv_window_summary <- rbind(
-    cv_window_summary,
-    data.frame(
-      Model_Key = key_name,
+for (scenario_name in prior_scenarios) {
+  scenario_name <- normalize_prior_scenario(scenario_name)
+  scenario_tag_upper <- toupper(gsub("[^A-Za-z0-9]", "", scenario_name))
+  scenario_keys <- names(cv_window_loo_registry)[grepl(sprintf("__%s$", scenario_name), names(cv_window_loo_registry))]
+
+  cv_window_summary <- data.frame()
+  for (reg_key in scenario_keys) {
+    model_key <- sub(sprintf("__%s$", scenario_name), "", reg_key)
+    comparison_path <- file.path(
+      base_output_dir,
+      sprintf("CV_WINDOW_LOO_HEALTH_%s_%s_PS_FULLGRID.csv", tolower(gsub("__", "_", model_key)), scenario_tag_upper)
+    )
+    cv_comp <- compare_cv_windows_formal_loo(
+      loo_by_cv = cv_window_loo_registry[[reg_key]],
+      context_label = sprintf("HEALTH_%s_%s", model_key, scenario_name),
+      converged_by_cv = cv_window_convergence_registry[[reg_key]],
+      out_csv_path = comparison_path
+    )
+    cv_window_summary <- rbind(cv_window_summary, data.frame(
+      Model_Key = model_key,
+      Prior_Scenario = scenario_name,
       Status = cv_comp$status,
       Winner_CV = ifelse(is.null(cv_comp$winner_cv), NA, cv_comp$winner_cv),
       Message = cv_comp$message,
       stringsAsFactors = FALSE
-    )
-  )
-}
-if (nrow(cv_window_summary) > 0) {
-  cv_summary_path <- file.path(base_output_dir, "CV_WINDOW_LOO_SUMMARY_HEALTH.csv")
-  write.csv(cv_window_summary, cv_summary_path, row.names = FALSE)
-  cat(sprintf("\nCV-window LOO summary saved: %s\n", cv_summary_path))
-}
-# ============================================================================
-# GLOBAL SUMMARY
-# ============================================================================
+    ))
+  }
 
-cat("\n")
-cat("??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n")
-cat("???   ALL HEALTH MODELS COMPLETED                                   ???\n")
-cat("??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n")
-cat("\n")
+  if (nrow(cv_window_summary) > 0) {
+    cv_summary_path <- file.path(
+      base_output_dir,
+      sprintf("CV_WINDOW_LOO_SUMMARY_HEALTH_%s_PS_FULLGRID.csv", scenario_tag_upper)
+    )
+    write.csv(cv_window_summary, cv_summary_path, row.names = FALSE)
+  }
+}
 
 if (nrow(all_results) > 0) {
-  cat(sprintf("Total models fitted: %d\n", nrow(all_results)))
-  cat(sprintf("Models with successful LOO: %d\n", sum(!is.na(all_results$LOOIC))))
-  cat(sprintf("Models converged: %d/%d\n",
-              sum(all_results$Converged, na.rm = TRUE),
-              sum(!is.na(all_results$Converged))))
-
-  cat("\nResults summary:\n")
-  print(all_results[, c("Response", "Model", "CV", "LOOIC", "SE_LOOIC", "Converged")])
-
-  # Save combined results
-  results_path <- file.path(base_output_dir, "Health_YEAR_RE_combined_results.csv")
+  results_path <- file.path(base_output_dir, "Health_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv")
   write.csv(all_results, results_path, row.names = FALSE)
-  cat(sprintf("\n??? Combined results saved: %s\n", results_path))
-} else {
-  cat("??? No results to save\n")
+
+  prior_sensitivity <- compute_prior_sensitivity_summary(all_results, model_family_label = "Gaussian_HEALTH_YEAR_RE")
+  if (nrow(prior_sensitivity) > 0) {
+    prior_sensitivity_path <- file.path(base_output_dir, "PRIOR_SENSITIVITY_HEALTH_PS_FULLGRID.csv")
+    write.csv(prior_sensitivity, prior_sensitivity_path, row.names = FALSE)
+  }
 }
 
-cat(sprintf("\nOutput directory: %s\n", base_output_dir))
-cat("\n??? Script 02b (Gaussian Health YEAR RE) completed!\n")
-
-
+cat(sprintf("Output directory: %s\\n", base_output_dir))
+cat("Script 02b completed (Gaussian Health YEAR_RE prior sensitivity full-grid).\\n")

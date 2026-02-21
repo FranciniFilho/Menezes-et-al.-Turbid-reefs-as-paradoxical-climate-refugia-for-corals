@@ -15,20 +15,79 @@ suppressPackageStartupMessages({
 })
 
 BASE_OUTPUT_DIR_YEAR_RE <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
-GLOBAL_WINNER_DIR <- file.path(BASE_OUTPUT_DIR_YEAR_RE, "Global_Winners_YEAR_RE")
-DETAIL_DIR <- file.path(BASE_OUTPUT_DIR_YEAR_RE, "Winner_Detailed_Reports_YEAR_RE")
-SUPPLEMENT_DIR <- file.path(DETAIL_DIR, "Supplement_Ready")
+BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
 
-dir.create(DETAIL_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(SUPPLEMENT_DIR, recursive = TRUE, showWarnings = FALSE)
+normalize_prior_scenario <- function(prior_tag) {
+  tag <- tolower(trimws(as.character(prior_tag)))
+  if (tag %in% c("weaklyinformative", "weakly_informative", "wi")) return("WeaklyInformative")
+  if (tag %in% c("informative", "inf")) return("Informative")
+  stop(sprintf("Unknown prior scenario: %s", prior_tag))
+}
 
-combined_file_map <- list(
-  COVER = file.path(BASE_OUTPUT_DIR_YEAR_RE, "ZOIB_Abundance_YEAR_RE", "ZOIB_YEAR_RE_combined_results.csv"),
-  RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_RGR", "RGR_combined_results.csv"),
-  HEALTH_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
-  HEALTH_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
-  JSDM = file.path(BASE_OUTPUT_DIR_YEAR_RE, "JSDM_Dirichlet_YEAR_RE", "JSDM_YEAR_RE_combined_results.csv")
-)
+resolve_namespace <- function(run_namespace = c("canonical", "prior_sens_fullgrid"),
+                              prior_scenario_target = "WeaklyInformative") {
+  run_namespace <- match.arg(run_namespace)
+  prior_scenario_target <- normalize_prior_scenario(prior_scenario_target)
+  scenario_tag_upper <- toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target))
+
+  if (run_namespace == "canonical") {
+    return(list(
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target,
+      scenario_tag_upper = scenario_tag_upper,
+      base_dir = BASE_OUTPUT_DIR_YEAR_RE,
+      global_winner_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Global_Winners_YEAR_RE"),
+      detail_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Winner_Detailed_Reports_YEAR_RE")
+    ))
+  }
+
+  list(
+    run_namespace = run_namespace,
+    prior_scenario_target = prior_scenario_target,
+    scenario_tag_upper = scenario_tag_upper,
+    base_dir = BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS,
+    global_winner_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Global_Winners_YEAR_RE"),
+    detail_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Winner_Detailed_Reports_YEAR_RE")
+  )
+}
+
+GLOBAL_WINNER_DIR <- NA_character_
+DETAIL_DIR <- NA_character_
+SUPPLEMENT_DIR <- NA_character_
+combined_file_map <- list()
+
+configure_report_namespace <- function(run_namespace = "canonical",
+                                       prior_scenario_target = "WeaklyInformative") {
+  ns_cfg <- resolve_namespace(run_namespace, prior_scenario_target)
+
+  GLOBAL_WINNER_DIR <<- ns_cfg$global_winner_dir
+  DETAIL_DIR <<- ns_cfg$detail_dir
+  SUPPLEMENT_DIR <<- file.path(DETAIL_DIR, "Supplement_Ready")
+  dir.create(DETAIL_DIR, recursive = TRUE, showWarnings = FALSE)
+  dir.create(SUPPLEMENT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+  if (ns_cfg$run_namespace == "canonical") {
+    combined_file_map <<- list(
+      COVER = file.path(ns_cfg$base_dir, "ZOIB_Abundance_YEAR_RE", "ZOIB_YEAR_RE_combined_results.csv"),
+      RGR = file.path(ns_cfg$base_dir, "Gaussian_RGR", "RGR_combined_results.csv"),
+      HEALTH_PC1 = file.path(ns_cfg$base_dir, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
+      HEALTH_PC2 = file.path(ns_cfg$base_dir, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
+      JSDM = file.path(ns_cfg$base_dir, "JSDM_Dirichlet_YEAR_RE", "JSDM_YEAR_RE_combined_results.csv")
+    )
+  } else {
+    combined_file_map <<- list(
+      COVER = file.path(ns_cfg$base_dir, "PS_FULLGRID_ZOIB_YEAR_RE", "ZOIB_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      RGR = file.path(ns_cfg$base_dir, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE", "RGR_combined_results_all_priors_PS_FULLGRID.csv"),
+      HEALTH_PC1 = file.path(ns_cfg$base_dir, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE", "Health_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      HEALTH_PC2 = file.path(ns_cfg$base_dir, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE", "Health_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      JSDM = file.path(ns_cfg$base_dir, "PS_FULLGRID_JSDM_DIRICHLET_YEAR_RE", "JSDM_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv")
+    )
+  }
+
+  ns_cfg
+}
+
+ns_report_cfg <- configure_report_namespace("canonical", "WeaklyInformative")
 
 response_lookup_map <- c(
   COVER = "COVER",
@@ -98,12 +157,13 @@ pretty_parameter <- function(x) {
   out
 }
 
-extract_fixed_effects <- function(model, response_label) {
+extract_fixed_effects <- function(model, response_label, prior_scenario = NA_character_) {
   fx <- as.data.frame(brms::fixef(model, summary = TRUE))
   sm <- as.data.frame(summary(model)$fixed)
 
   out <- data.frame(
     Response = response_label,
+    Prior_Scenario = prior_scenario,
     Parameter = rownames(fx),
     Parameter_Label = pretty_parameter(rownames(fx)),
     Estimate = fx$Estimate,
@@ -137,7 +197,7 @@ extract_fixed_effects <- function(model, response_label) {
   out
 }
 
-extract_random_effects <- function(model, response_label) {
+extract_random_effects <- function(model, response_label, prior_scenario = NA_character_) {
   vc <- brms::VarCorr(model, summary = TRUE)
   groups <- names(vc)
   if (length(groups) == 0) return(data.frame())
@@ -148,6 +208,7 @@ extract_random_effects <- function(model, response_label) {
 
     data.frame(
       Response = response_label,
+      Prior_Scenario = prior_scenario,
       Group = g,
       Term = rownames(sd_tbl),
       Estimate_SD = sd_tbl$Estimate,
@@ -245,6 +306,7 @@ build_supplement_outputs <- function(metrics_all, fixed_all, random_all, key_all
     mutate(Outcome = unname(response_label_map[as.character(Response)])) %>%
     transmute(
       Outcome,
+      Prior_Scenario,
       Winner_Model = Model,
       Temporal_Window = Winner_CV,
       Family,
@@ -268,6 +330,7 @@ build_supplement_outputs <- function(metrics_all, fixed_all, random_all, key_all
     ungroup() %>%
     transmute(
       Outcome,
+      Prior_Scenario,
       Parameter = Parameter_Label,
       Estimate,
       CrI_95_low = CI_low,
@@ -280,7 +343,7 @@ build_supplement_outputs <- function(metrics_all, fixed_all, random_all, key_all
 
   s3 <- random_all %>%
     mutate(Outcome = unname(response_label_map[as.character(Response)])) %>%
-    group_by(Outcome, Group) %>%
+    group_by(Outcome, Prior_Scenario, Group) %>%
     summarise(
       N_Terms = n(),
       Mean_SD = mean(Estimate_SD, na.rm = TRUE),
@@ -295,6 +358,7 @@ build_supplement_outputs <- function(metrics_all, fixed_all, random_all, key_all
     arrange(Response, desc(Abs_Estimate)) %>%
     transmute(
       Outcome,
+      Prior_Scenario,
       Parameter = Parameter_Label,
       Estimate,
       Est_Error,
@@ -362,17 +426,33 @@ build_supplement_outputs <- function(metrics_all, fixed_all, random_all, key_all
   )
 }
 
-build_winner_detailed_reports_year_re <- function() {
+build_winner_detailed_reports_year_re <- function(run_namespace = "canonical",
+                                                  prior_scenario_target = "WeaklyInformative") {
+  ns_cfg <- configure_report_namespace(run_namespace, prior_scenario_target)
+
   cat("\n============================================================================\n")
-  cat("BUILDING DETAILED WINNER REPORTS (YEAR_RE)\n")
+  cat(sprintf("BUILDING DETAILED WINNER REPORTS (YEAR_RE) - namespace: %s\n", ns_cfg$run_namespace))
+  if (ns_cfg$run_namespace == "prior_sens_fullgrid") {
+    cat(sprintf("Prior scenario target: %s\n", ns_cfg$prior_scenario_target))
+  }
   cat("============================================================================\n")
 
-  summary_path <- file.path(GLOBAL_WINNER_DIR, "GLOBAL_WINNER_SUMMARY_YEAR_RE.csv")
+  summary_file <- if (ns_cfg$run_namespace == "prior_sens_fullgrid") {
+    sprintf("GLOBAL_WINNER_SUMMARY_YEAR_RE_%s.csv", ns_cfg$scenario_tag_upper)
+  } else {
+    "GLOBAL_WINNER_SUMMARY_YEAR_RE.csv"
+  }
+  summary_path <- file.path(GLOBAL_WINNER_DIR, summary_file)
   if (!file.exists(summary_path)) {
     stop(sprintf("Global summary not found: %s", summary_path))
   }
 
   global_summary <- readr::read_csv(summary_path, show_col_types = FALSE)
+  if (ns_cfg$run_namespace == "prior_sens_fullgrid" && ("Prior_Scenario" %in% names(global_summary))) {
+    global_summary <- global_summary %>%
+      mutate(Prior_Scenario = as.character(Prior_Scenario)) %>%
+      filter(Prior_Scenario == ns_cfg$prior_scenario_target)
+  }
   winners <- global_summary %>% filter(Status == "OK")
   if (nrow(winners) == 0) stop("No global winners with Status == OK")
 
@@ -396,6 +476,7 @@ build_winner_detailed_reports_year_re <- function() {
     model_path <- as.character(row$Global_Path)
     model_name <- as.character(row$Model)
     winner_cv <- as.character(row$Winner_CV)
+    prior_scenario <- if ("Prior_Scenario" %in% names(row)) as.character(row$Prior_Scenario) else ns_cfg$prior_scenario_target
 
     cat(sprintf("\n>>> Processing winner: %s (%s, %s)\n", response, model_name, winner_cv))
 
@@ -418,14 +499,16 @@ build_winner_detailed_reports_year_re <- function() {
           Model = toupper(as.character(Model)),
           CV = toupper(as.character(CV))
         ) %>%
+        { if ("Prior_Scenario" %in% names(.)) mutate(., Prior_Scenario = as.character(Prior_Scenario)) else . } %>%
+        { if ("Prior_Scenario" %in% names(.)) filter(., Prior_Scenario == prior_scenario) else . } %>%
         filter(Response == toupper(lookup_response),
                Model == toupper(model_name),
                CV == toupper(winner_cv)) %>%
         slice(1)
     }
 
-    fixed_df <- extract_fixed_effects(model, response)
-    random_df <- extract_random_effects(model, response)
+    fixed_df <- extract_fixed_effects(model, response, prior_scenario = prior_scenario)
+    random_df <- extract_random_effects(model, response, prior_scenario = prior_scenario)
 
     key_df <- fixed_df %>%
       filter(!str_detect(Parameter, "Intercept"), Credible_NonZero) %>%
@@ -444,6 +527,7 @@ build_winner_detailed_reports_year_re <- function() {
 
     metrics_row <- data.frame(
       Response = response,
+      Prior_Scenario = prior_scenario,
       Family = model$family$family,
       Model = model_name,
       Winner_CV = winner_cv,
@@ -493,19 +577,19 @@ build_winner_detailed_reports_year_re <- function() {
       "### Winner Metrics",
       "",
       md_table(metrics_row %>%
-                 select(Response, Family, Model, Winner_CV, N_Obs, LOOIC, SE_LOOIC, Converged, Rhat_Max, ESS_Bulk_Min, N_Divergent, R2_Mean, R2_CI_low, R2_CI_high),
+                 select(Response, Prior_Scenario, Family, Model, Winner_CV, N_Obs, LOOIC, SE_LOOIC, Converged, Rhat_Max, ESS_Bulk_Min, N_Divergent, R2_Mean, R2_CI_low, R2_CI_high),
                digits = 4, max_rows = 5),
       "",
       "### Top Effects Table",
       "",
       md_table(key_df %>%
-                 select(Parameter_Label, Estimate, CI_low, CI_high, Credible_NonZero, Rhat, ESS_Bulk),
+                 select(Prior_Scenario, Parameter_Label, Estimate, CI_low, CI_high, Credible_NonZero, Rhat, ESS_Bulk),
                digits = 4, max_rows = 12),
       "",
       "### Random Effects (SD)",
       "",
       md_table(random_df %>%
-                 select(Group, Term, Estimate_SD, CI_low_SD, CI_high_SD),
+                 select(Prior_Scenario, Group, Term, Estimate_SD, CI_low_SD, CI_high_SD),
                digits = 4, max_rows = 20),
       "",
       sprintf("CSV files: `%s`, `%s`, `%s`, `%s`", metrics_csv, fixed_csv, random_csv, key_csv),
@@ -575,5 +659,11 @@ called_args <- commandArgs(trailingOnly = FALSE)
 is_direct_call <- any(grepl("^--file=.*06_WINNER_DETAILED_REPORT_YEAR_RE\\.R$", called_args))
 
 if (!interactive() && is_direct_call) {
-  build_winner_detailed_reports_year_re()
+  args <- commandArgs(trailingOnly = TRUE)
+  run_namespace <- if (length(args) >= 1) args[[1]] else "canonical"
+  prior_scenario_target <- if (length(args) >= 2) args[[2]] else "WeaklyInformative"
+  build_winner_detailed_reports_year_re(
+    run_namespace = run_namespace,
+    prior_scenario_target = prior_scenario_target
+  )
 }

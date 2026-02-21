@@ -4,11 +4,11 @@
 # Master script to run all YEAR RE models with checkpointing
 # Order of execution: ZOIB -> RGR -> Health -> JSDM
 # ============================================================================
-# Total models: 60
-# - ZOIB: 12 (3 CV × 4 combos)
-# - RGR: 12 (3 CV × 4 combos)
-# - Health: 24 (3 CV × 4 combos × 2 responses)
-# - JSDM: 12 (3 CV × 4 combos)
+# Total models (full-grid prior sensitivity): 210
+# - ZOIB: 42 (3 CV x 7 combos x 2 priors)
+# - RGR: 42 (3 CV x 7 combos x 2 priors)
+# - Health: 84 (3 CV x 7 combos x 2 responses x 2 priors)
+# - JSDM: 42 (3 CV x 7 combos x 2 priors)
 # ============================================================================
 
 # Set working directory
@@ -18,31 +18,41 @@ setwd("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mu
 # CONFIGURATION
 # ============================================================================
 
+args <- commandArgs(trailingOnly = TRUE)
+run_namespace <- if (length(args) >= 1) args[[1]] else "prior_sens_fullgrid"
+prior_scenario_target <- if (length(args) >= 2) args[[2]] else "WeaklyInformative"
+
+output_root <- if (run_namespace == "prior_sens_fullgrid") {
+  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
+} else {
+  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
+}
+
 # Scripts to run (in order)
 scripts_to_run <- list(
   list(
     name = "ZOIB Abundance (YEAR RE)",
     script = "01_ZOIB_YEAR_RE_Full_LOO_Selection.R",
-    n_models = 12,
-    description = "ZOIB models with (1|REEF) + (1|YEAR)"
+    n_models = 42,
+    description = "ZOIB models with YEAR RE and WI/INF priors"
   ),
   list(
     name = "Gaussian RGR (NO YEAR RE)",
     script = "02a_Gaussian_RGR_Full_LOO_Selection.R",
-    n_models = 12,
-    description = "RGR models with (1|REEF) only (time-integrated metric)"
+    n_models = 42,
+    description = "RGR models with (1|REEF) under WI/INF priors"
   ),
   list(
     name = "Gaussian Health (YEAR RE)",
     script = "02b_Gaussian_Health_YEAR_RE_Full_LOO_Selection.R",
-    n_models = 24,
-    description = "Health models with (1|REEF) + (1|YEAR)"
+    n_models = 84,
+    description = "Health models with YEAR RE and WI/INF priors"
   ),
   list(
     name = "JSDM Dirichlet (YEAR RE)",
     script = "03_JSDM_YEAR_RE_Full_LOO_Selection.R",
-    n_models = 12,
-    description = "JSDM models with (1|REEF) + (1|YEAR)"
+    n_models = 42,
+    description = "JSDM models with YEAR RE and WI/INF priors"
   )
 )
 
@@ -60,7 +70,9 @@ cat("╚════════════════════════
 cat("\n")
 cat(sprintf("Total scripts to run: %d\n", length(scripts_to_run)))
 cat(sprintf("Total models to fit: %d\n", total_models))
-cat(sprintf("Output directory: %s\n", "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"))
+cat(sprintf("Namespace: %s\n", run_namespace))
+cat(sprintf("Prior scenario target for downstream: %s\n", prior_scenario_target))
+cat(sprintf("Output directory: %s\n", output_root))
 cat("\n")
 
 # Track results
@@ -136,19 +148,29 @@ cat(sprintf("Scripts failed: %d/%d\n", n_failed, nrow(results)))
 if (n_success > 0) {
   cat("\n✓ All scripts completed successfully!\n")
   cat("\nTo view results, check:\n")
-  cat("  - C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/\n")
+  cat(sprintf("  - %s\n", output_root))
   cat("\nWinner models are saved as WINNER_*.rds files\n")
   cat("\nRunning global winner consolidation...\n")
   tryCatch({
     source("05_CONSOLIDATE_GLOBAL_WINNERS_YEAR_RE.R")
-    global_summary <- build_global_winners_year_re()
+    global_summary <- build_global_winners_year_re(
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target
+    )
     n_global <- sum(global_summary$Status == "OK", na.rm = TRUE)
     cat(sprintf("Global winners created: %d\n", n_global))
-    cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/\n")
+    if (run_namespace == "prior_sens_fullgrid") {
+      cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Global_Winners_YEAR_RE/\n")
+    } else {
+      cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/\n")
+    }
 
     cat("\nRunning detailed winner report stage (06)...\n")
     source("06_WINNER_DETAILED_REPORT_YEAR_RE.R")
-    report_outputs <- build_winner_detailed_reports_year_re()
+    report_outputs <- build_winner_detailed_reports_year_re(
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target
+    )
     cat(sprintf("Detailed report markdown: %s\n", report_outputs$report_md))
     cat(sprintf("Supplement report markdown: %s\n", report_outputs$supplement_md))
   }, error = function(e) {

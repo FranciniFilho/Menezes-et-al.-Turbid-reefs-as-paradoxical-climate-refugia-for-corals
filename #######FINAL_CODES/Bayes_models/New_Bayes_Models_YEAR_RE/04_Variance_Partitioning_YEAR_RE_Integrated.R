@@ -39,21 +39,61 @@ set.seed(42)
 # 2. PATH DEFINITIONS
 # ============================================================================
 
-# Base output directory for YEAR RE models
 BASE_OUTPUT_DIR_YEAR_RE <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
+BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
 
-# Output directory for VP results
-VP_OUTPUT_DIR <- file.path(BASE_OUTPUT_DIR_YEAR_RE, "Variance_Partitioning_YEAR_RE/")
+normalize_prior_scenario <- function(prior_tag) {
+  tag <- tolower(trimws(as.character(prior_tag)))
+  if (tag %in% c("weaklyinformative", "weakly_informative", "wi")) return("WeaklyInformative")
+  if (tag %in% c("informative", "inf")) return("Informative")
+  stop(sprintf("Unknown prior scenario: %s", prior_tag))
+}
+
+resolve_vp_namespace <- function(run_namespace = c("canonical", "prior_sens_fullgrid"),
+                                 prior_scenario_target = "WeaklyInformative") {
+  run_namespace <- match.arg(run_namespace)
+  prior_scenario_target <- normalize_prior_scenario(prior_scenario_target)
+
+  if (run_namespace == "canonical") {
+    return(list(
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target,
+      scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target)),
+      base_dir = BASE_OUTPUT_DIR_YEAR_RE,
+      vp_output_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Variance_Partitioning_YEAR_RE/"),
+      model_dirs = list(
+        ZOIB_Abundance = file.path(BASE_OUTPUT_DIR_YEAR_RE, "ZOIB_Abundance_YEAR_RE/"),
+        RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_RGR/RGR/"),
+        Health_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE/HEALTH_PC1/"),
+        Health_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE/HEALTH_PC2/"),
+        JSDM = file.path(BASE_OUTPUT_DIR_YEAR_RE, "JSDM_Dirichlet_YEAR_RE/")
+      )
+    ))
+  }
+
+  list(
+    run_namespace = run_namespace,
+    prior_scenario_target = prior_scenario_target,
+    scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target)),
+    base_dir = BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS,
+    vp_output_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Variance_Partitioning_YEAR_RE/"),
+    model_dirs = list(
+      ZOIB_Abundance = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_ZOIB_YEAR_RE/"),
+      RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE/RGR/"),
+      Health_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/HEALTH_PC1/"),
+      Health_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/HEALTH_PC2/"),
+      JSDM = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_JSDM_DIRICHLET_YEAR_RE/")
+    )
+  )
+}
+
+RUN_NAMESPACE <- Sys.getenv("RUN_NAMESPACE", "canonical")
+PRIOR_SCENARIO_TARGET <- Sys.getenv("PRIOR_SCENARIO_TARGET", "WeaklyInformative")
+VP_NAMESPACE_CFG <- resolve_vp_namespace(RUN_NAMESPACE, PRIOR_SCENARIO_TARGET)
+
+VP_OUTPUT_DIR <- VP_NAMESPACE_CFG$vp_output_dir
 dir.create(VP_OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
-
-# Model type directories
-model_dirs <- list(
-  ZOIB_Abundance = file.path(BASE_OUTPUT_DIR_YEAR_RE, "ZOIB_Abundance_YEAR_RE/"),
-  RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_RGR/RGR/"),
-  Health_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE/HEALTH_PC1/"),
-  Health_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Gaussian_Health_YEAR_RE/HEALTH_PC2/"),
-  JSDM = file.path(BASE_OUTPUT_DIR_YEAR_RE, "JSDM_Dirichlet_YEAR_RE/")
-)
+model_dirs <- VP_NAMESPACE_CFG$model_dirs
 
 # CV scales to compare
 cv_scales <- c("CV_02", "CV_30", "CV_ALL")
@@ -67,7 +107,9 @@ cv_scales <- c("CV_02", "CV_30", "CV_ALL")
 #' @param cv_label CV label (e.g., "CV_02")
 #' @param model_type Type identifier (e.g., "zoib_abundance_year_re")
 #' @return Path to winner model file or NULL
-find_winner_model <- function(model_dir, cv_label, model_type) {
+find_winner_model <- function(model_dir, cv_label, model_type,
+                              run_namespace = VP_NAMESPACE_CFG$run_namespace,
+                              prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
 
   # Look for WINNER files with the CV label
   all_files <- list.files(model_dir, pattern = "\\.rds$", full.names = TRUE, recursive = TRUE)
@@ -78,7 +120,12 @@ find_winner_model <- function(model_dir, cv_label, model_type) {
   cv_pattern <- gsub("0", "", cv_pattern) # Remove zeros for looser matching
   matching_files <- all_files[grepl(cv_label, all_files, ignore.case = TRUE)]
 
+  if (run_namespace == "prior_sens_fullgrid") {
+    matching_files <- matching_files[grepl(prior_scenario_target, matching_files, ignore.case = TRUE)]
+  }
+
   if (length(matching_files) > 0) {
+    matching_files <- sort(matching_files)
     return(matching_files[1])
   }
 
@@ -88,7 +135,9 @@ find_winner_model <- function(model_dir, cv_label, model_type) {
 #' Load all winner models for a response type across CV scales
 #' @param response_type "ZOIB_Abundance", "Health_PC1", "Health_PC2", or "JSDM"
 #' @return List with models for each CV scale
-load_winner_models_by_cv <- function(response_type) {
+load_winner_models_by_cv <- function(response_type,
+                                     run_namespace = VP_NAMESPACE_CFG$run_namespace,
+                                     prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
 
   cat(sprintf("\n=== Loading %s models ===\n", response_type))
 
@@ -112,7 +161,13 @@ load_winner_models_by_cv <- function(response_type) {
   }
 
   for (cv in cv_scales) {
-    model_path <- find_winner_model(model_dir, cv, model_type)
+    model_path <- find_winner_model(
+      model_dir,
+      cv,
+      model_type,
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target
+    )
 
     if (!is.null(model_path)) {
       cat(sprintf("  ✓ %s: %s\n", cv, basename(model_path)))
@@ -137,20 +192,37 @@ load_winner_models_by_cv <- function(response_type) {
 #' Load combined results CSV if available
 #' @param response_type Response type
 #' @return Dataframe with combined results
-load_combined_results <- function(response_type) {
+load_combined_results <- function(response_type,
+                                  run_namespace = VP_NAMESPACE_CFG$run_namespace,
+                                  prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
 
   # Map response types to result files
-  result_files <- list(
-    "ZOIB_Abundance" = file.path(model_dirs$ZOIB_Abundance, "ZOIB_Abundance_YEAR_RE_combined_results.csv"),
-    "Health_PC1" = file.path(model_dirs$Health_PC1, "Health_YEAR_RE_combined_results.csv"),
-    "Health_PC2" = file.path(model_dirs$Health_PC1, "Health_YEAR_RE_combined_results.csv"),
-    "JSDM" = file.path(model_dirs$JSDM, "JSDM_YEAR_RE_combined_results.csv")
-  )
+  if (run_namespace == "prior_sens_fullgrid") {
+    result_files <- list(
+      "ZOIB_Abundance" = file.path(VP_NAMESPACE_CFG$base_dir, "PS_FULLGRID_ZOIB_YEAR_RE", "ZOIB_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      "RGR" = file.path(VP_NAMESPACE_CFG$base_dir, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE", "RGR_combined_results_all_priors_PS_FULLGRID.csv"),
+      "Health_PC1" = file.path(VP_NAMESPACE_CFG$base_dir, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE", "Health_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      "Health_PC2" = file.path(VP_NAMESPACE_CFG$base_dir, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE", "Health_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv"),
+      "JSDM" = file.path(VP_NAMESPACE_CFG$base_dir, "PS_FULLGRID_JSDM_DIRICHLET_YEAR_RE", "JSDM_YEAR_RE_combined_results_all_priors_PS_FULLGRID.csv")
+    )
+  } else {
+    result_files <- list(
+      "ZOIB_Abundance" = file.path(model_dirs$ZOIB_Abundance, "ZOIB_Abundance_YEAR_RE_combined_results.csv"),
+      "RGR" = file.path(VP_NAMESPACE_CFG$base_dir, "Gaussian_RGR", "RGR_combined_results.csv"),
+      "Health_PC1" = file.path(VP_NAMESPACE_CFG$base_dir, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
+      "Health_PC2" = file.path(VP_NAMESPACE_CFG$base_dir, "Gaussian_Health_YEAR_RE", "Health_YEAR_RE_combined_results.csv"),
+      "JSDM" = file.path(model_dirs$JSDM, "JSDM_YEAR_RE_combined_results.csv")
+    )
+  }
 
   result_file <- result_files[[response_type]]
 
   if (!is.null(result_file) && file.exists(result_file)) {
-    return(read.csv(result_file, stringsAsFactors = FALSE))
+    df <- read.csv(result_file, stringsAsFactors = FALSE)
+    if (run_namespace == "prior_sens_fullgrid" && ("Prior_Scenario" %in% names(df))) {
+      df <- df[df$Prior_Scenario == prior_scenario_target, , drop = FALSE]
+    }
+    return(df)
   }
 
   return(NULL)
@@ -678,11 +750,17 @@ interpret_vp_results <- function(summary_df) {
 #' @return List with all results
 run_year_re_variance_partitioning <- function(
     response_types = c("ZOIB_Abundance", "RGR", "Health_PC1", "Health_PC2", "JSDM"),
-    output_dir = VP_OUTPUT_DIR) {
+    output_dir = VP_OUTPUT_DIR,
+    run_namespace = VP_NAMESPACE_CFG$run_namespace,
+    prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
 
   cat("\n")
   cat("============================================================================\n")
   cat("VARIANCE PARTITIONING: YEAR_RE MODELS (HYBRID APPROACH)\n")
+  cat(sprintf("Namespace: %s\n", run_namespace))
+  if (run_namespace == "prior_sens_fullgrid") {
+    cat(sprintf("Prior scenario target: %s\n", prior_scenario_target))
+  }
   cat("============================================================================\n")
 
   # Create output subdirectories
@@ -695,7 +773,11 @@ run_year_re_variance_partitioning <- function(
     cat(sprintf("\n>>> Processing: %s <<<\n", resp_type))
 
     # Load models
-    models <- load_winner_models_by_cv(resp_type)
+    models <- load_winner_models_by_cv(
+      resp_type,
+      run_namespace = run_namespace,
+      prior_scenario_target = prior_scenario_target
+    )
 
     if (is.null(models) || all(sapply(models, is.null))) {
       cat(sprintf("  ⚠ Skipping %s: no models found\n", resp_type))
@@ -749,6 +831,8 @@ run_year_re_variance_partitioning <- function(
 if (!interactive() || TRUE) {
   results <- run_year_re_variance_partitioning(
     response_types = c("ZOIB_Abundance", "RGR", "Health_PC1", "Health_PC2", "JSDM"),
-    output_dir = VP_OUTPUT_DIR
+    output_dir = VP_OUTPUT_DIR,
+    run_namespace = VP_NAMESPACE_CFG$run_namespace,
+    prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target
   )
 }
