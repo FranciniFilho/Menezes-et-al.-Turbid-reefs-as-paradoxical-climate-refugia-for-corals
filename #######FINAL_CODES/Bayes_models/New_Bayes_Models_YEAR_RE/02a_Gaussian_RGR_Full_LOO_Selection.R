@@ -36,7 +36,13 @@ all_results <- data.frame()
 cv_window_loo_registry <- list()
 cv_window_convergence_registry <- list()
 
+# PROGRESS TRACKING
+total_models <- length(cv_scenarios) * length(response_variables) * length(prior_scenarios) * length(model_combinations_year_re)
+model_counter <- 0
+start_time_global <- Sys.time()
+
 for (cv_label in cv_scenarios) {
+
   prepared_data <- tryCatch({
     prepare_gaussian_data(dataset_paths_gaussian[[cv_label]], cv_label)
   }, error = function(e) {
@@ -64,7 +70,18 @@ for (cv_label in cv_scenarios) {
       convergence_map <- list()
 
       for (model_config in model_combinations_year_re) {
+        model_counter <- model_counter + 1
+        
+        cat(sprintf("\n%s\n", paste(rep("=", 60), collapse="")))
+        cat(sprintf("MODEL %d of %d (%.1f%%) | Start: %s\n", 
+                    model_counter, total_models, 100 * (model_counter-1) / total_models,
+                    format(Sys.time(), "%H:%M:%S")))
+        cat(sprintf("Response: %s | Model: %s | CV: %s | Prior: %s\n", 
+                    response_var, model_config$name, cv_label, scenario_name))
+        cat(sprintf("%s\n\n", paste(rep("-", 60), collapse="")))
+
         formula_obj <- make_gaussian_formula(
+
           response_var = response_var,
           include_hab = model_config$include_hab,
           include_depth = model_config$include_depth,
@@ -122,10 +139,23 @@ for (cv_label in cv_scenarios) {
           ESS_Tail_Min = conv_check$ess_tail_min,
           N_Divergent = conv_check$n_divergent,
           Cached = result$cached,
-          Elapsed_Mins = ifelse(is.null(result$elapsed_mins), NA, result$elapsed_mins),
-          stringsAsFactors = FALSE
-        ))
-      }
+        Elapsed_Mins = ifelse(is.null(result$elapsed_mins), NA, result$elapsed_mins),
+        stringsAsFactors = FALSE
+      ))
+      
+      # PROGRESS LOG - CONCLUSION
+      elapsed_global <- as.numeric(difftime(Sys.time(), start_time_global, units = "mins"))
+      avg_time <- elapsed_global / model_counter
+      rem_models <- total_models - model_counter
+      eta_h <- (avg_time * rem_models) / 60
+      
+      cat(sprintf("\n[PROGRESS] Model %d completed. Time: %.1f min | Total Elapsed: %.1f min\n",
+                  model_counter, ifelse(is.null(result$elapsed_mins), 0, result$elapsed_mins), elapsed_global))
+      cat(sprintf("[PROGRESS] Avg Time: %.1f min/model | Estimated remaining: %.1f hours\n",
+                  avg_time, eta_h))
+      cat(sprintf("%s\n", paste(rep("=", 60), collapse="")))
+    }
+
 
       if (length(loo_list) > 1) {
         cv_comp <- compare_loo_within_cv(loo_list, paste(cv_label, response_var, scenario_name, sep = "_"), convergence_map)

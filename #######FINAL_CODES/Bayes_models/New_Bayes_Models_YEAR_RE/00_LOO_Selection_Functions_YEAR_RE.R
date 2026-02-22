@@ -69,12 +69,13 @@ env_to_bool <- function(var_name, default_value = FALSE) {
   raw %in% c("1", "true", "yes", "y", "on")
 }
 
-BRMS_CHAINS_DEFAULT <- env_to_int("BRMS_CHAINS_DEFAULT", 4L)
-BRMS_CORES_DEFAULT <- min(env_to_int("BRMS_CORES_DEFAULT", 4L), BRMS_CHAINS_DEFAULT)
-LOO_CORES_DEFAULT <- env_to_int("LOO_CORES_DEFAULT", max(1L, BRMS_CORES_DEFAULT - 1L))
+BRMS_CHAINS_DEFAULT <- env_to_int("BRMS_CHAINS_DEFAULT", 6L)
+BRMS_CORES_DEFAULT <- min(env_to_int("BRMS_CORES_DEFAULT", 6L), BRMS_CHAINS_DEFAULT)
+LOO_CORES_DEFAULT <- env_to_int("LOO_CORES_DEFAULT", 3L)
 
-ENABLE_OPENCL_ZOIB <- env_to_bool("ENABLE_OPENCL_ZOIB", TRUE)
+ENABLE_OPENCL_ZOIB <- env_to_bool("ENABLE_OPENCL_ZOIB", FALSE)
 BRMS_THREADS_PER_CHAIN_ZOIB <- env_to_int("BRMS_THREADS_PER_CHAIN_ZOIB", 2L)
+BRMS_THREADS_PER_CHAIN_GAUSSIAN <- 2L
 OPENCL_PLATFORM_ID <- env_to_int("OPENCL_PLATFORM_ID", 0L)
 OPENCL_DEVICE_ID <- env_to_int("OPENCL_DEVICE_ID", 0L)
 
@@ -91,12 +92,14 @@ RAW_HEALTH_EXCEL <- list.files(
 
 # PCA scores path (for loading existing loadings - NOT recalculating!)
 # Using list.files to avoid # character issues
-PCA_SCORES_PATH <- list.files(
+PCA_SCORES_CANDIDATES <- list.files(
   path = "C:/Users/rbfra/OneDrive/",
   pattern = "scores_PCA_Saude\\.xlsx$",
   recursive = TRUE,
   full.names = TRUE
-)[1]
+)
+PCA_SCORES_YEAR_RE <- PCA_SCORES_CANDIDATES[grepl("YEAR_RE", PCA_SCORES_CANDIDATES, ignore.case = TRUE)]
+PCA_SCORES_PATH <- if (length(PCA_SCORES_YEAR_RE) > 0) PCA_SCORES_YEAR_RE[1] else PCA_SCORES_CANDIDATES[1]
 
 # ============================================================================
 # SECTION 2: UTILITY FUNCTIONS FOR YEAR VALIDATION
@@ -124,6 +127,24 @@ check_year_levels <- function(data, min_levels = 2) {
   cat("  Observations per year:\n")
   for (y in names(obs_per_year)) {
     cat(sprintf("    Year %s: %d\n", y, obs_per_year[y]))
+  }
+
+  if ("HEALTH_PC1" %in% names(data)) {
+    health_by_year <- data %>%
+      dplyr::group_by(YEAR) %>%
+      dplyr::summarize(
+        mean_pc1 = mean(HEALTH_PC1, na.rm = TRUE),
+        sd_pc1 = sd(HEALTH_PC1, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    cat("\n  Health PC1 by YEAR:\n")
+    for (i in seq_len(nrow(health_by_year))) {
+      cat(sprintf("    Year %s: mean=%.2f, sd=%.2f\n",
+                  health_by_year$YEAR[i],
+                  health_by_year$mean_pc1[i],
+                  health_by_year$sd_pc1[i]))
+    }
   }
 
   if (n_years < min_levels) {
@@ -256,18 +277,55 @@ prepare_health_data_with_year <- function(excel_path, pca_scores_path,
   pca_scores$SITE_COL <- toupper(trimws(pca_scores$SITE_COL))
 
   # Verify PCA scores have required columns
-  if (!all(c("SITE_COL", "HEALTH_PC1", "HEALTH_PC2") %in% names(pca_scores))) {
-    stop("PCA scores file missing required columns: SITE_COL, HEALTH_PC1, HEALTH_PC2")
+  required_pca_cols <- c("SITE_COL", "YEAR", "HEALTH_PC1", "HEALTH_PC2")
+  missing_pca_cols <- setdiff(required_pca_cols, names(pca_scores))
+  if (length(missing_pca_cols) > 0) {
+    stop(paste("PCA scores file missing required columns:",
+               paste(missing_pca_cols, collapse = ", ")))
   }
+  pca_scores$YEAR <- as.character(pca_scores$YEAR)
 
-  # Merge PCA scores by SITE_COL
+  cat("  Merging PCA scores by SITE_COL and YEAR...\n")
   health_data <- merge(raw_data,
-                       pca_scores[, c("SITE_COL", "HEALTH_PC1", "HEALTH_PC2")],
-                       by = "SITE_COL", all.x = TRUE)
+                       pca_scores[, required_pca_cols],
+                       by = c("SITE_COL", "YEAR"), all.x = TRUE)
+
+  cat(sprintf("    Health data after PCA merge: %d rows\n", nrow(health_data)))
+  cat(sprintf("    Unique SITE_COL: %d, Unique YEAR: %d\n",
+              length(unique(health_data$SITE_COL)),
+              length(unique(health_data$YEAR))))
 
   # Check for NA PCA scores
   if (any(is.na(health_data$HEALTH_PC1)) || any(is.na(health_data$HEALTH_PC2))) {
     warning("Some observations have NA PCA scores after merge")
+    n_na <- sum(is.na(health_data$HEALTH_PC1) | is.na(health_data$HEALTH_PC2))
+    cat(sprintf("    NAs in PCA scores: %d of %d observations (%.1f%%)\n",
+                n_na, nrow(health_data), 100 * n_na / nrow(health_data)))
+  }
+
+  # Validate temporal variation in health scores
+  if ("YEAR" %in% names(health_data)) {
+    cat("  Validating YEAR variation in health scores...\n")
+    health_by_col_year <- health_data %>%
+      dplyr::select(SITE_COL, YEAR, HEALTH_PC1, HEALTH_PC2) %>%
+      dplyr::group_by(SITE_COL) %>%
+      dplyr::summarize(
+        n_years = dplyr::n_distinct(YEAR),
+        range_pc1 = max(HEALTH_PC1, na.rm = TRUE) - min(HEALTH_PC1, na.rm = TRUE),
+        range_pc2 = max(HEALTH_PC2, na.rm = TRUE) - min(HEALTH_PC2, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    colonies_with_multi_year <- sum(health_by_col_year$n_years > 1)
+    colonies_with_variation <- sum(
+      (health_by_col_year$range_pc1 > 0.1 | health_by_col_year$range_pc2 > 0.1) &
+        health_by_col_year$n_years > 1
+    )
+
+    cat(sprintf("    Colonies with >1 year: %d of %d\n",
+                colonies_with_multi_year, nrow(health_by_col_year)))
+    cat(sprintf("    Colonies with meaningful variation: %d of %d\n",
+                colonies_with_variation, colonies_with_multi_year))
   }
 
   # --- STEP 4: Read and aggregate environmental data BEFORE merge ---
@@ -964,8 +1022,11 @@ build_prior_set_zoib <- function(scenario_name, cv_label, formula_obj, data, hab
   pri <- c(prior(normal(0, 2), class = "Intercept"))
 
   sd_groups <- unique(prior_info$group[prior_info$class == "sd" & prior_info$group != ""])
-  for (g in sd_groups) {
-    pri <- c(pri, prior(exponential(1), class = "sd", group = g))
+  if (length(sd_groups) > 0) {
+    sd_priors <- lapply(sd_groups, function(grp) {
+      prior_string("exponential(1)", class = "sd", group = grp)
+    })
+    pri <- c(pri, do.call(c, sd_priors))
   }
 
   if ("sds" %in% prior_info$class) {
@@ -973,17 +1034,22 @@ build_prior_set_zoib <- function(scenario_name, cv_label, formula_obj, data, hab
   }
 
   b_coefs <- unique(prior_info$coef[prior_info$class == "b" & prior_info$coef != ""])
-  for (coef_name in b_coefs) {
-    if (coef_name %in% names(pvals)) {
-      mu <- pvals[[coef_name]][1]
-      sd <- pvals[[coef_name]][2]
-      pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
-    } else {
-      pri <- c(pri, prior(normal(0, 0.5), class = "b", coef = coef_name))
-    }
+  if (length(b_coefs) > 0) {
+    b_priors <- lapply(b_coefs, function(cname) {
+      if (cname %in% names(pvals)) {
+        mu <- pvals[[cname]][1]
+        sd_val <- pvals[[cname]][2]
+        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = cname)
+      } else {
+        prior_string("normal(0, 0.5)", class = "b", coef = cname)
+      }
+    })
+    pri <- c(pri, do.call(c, b_priors))
   }
 
-  pri
+  pri_df <- as.data.frame(pri)
+  key <- paste(pri_df$class, pri_df$group, pri_df$coef, pri_df$dpar, pri_df$resp, pri_df$nlpar, sep = "|")
+  pri[!duplicated(key), , drop = FALSE]
 }
 
 build_prior_set_gaussian <- function(scenario_name, cv_label, response_var, formula_obj, data, hab_rrtp_mean) {
@@ -1000,8 +1066,11 @@ build_prior_set_gaussian <- function(scenario_name, cv_label, response_var, form
   }
 
   sd_groups <- unique(prior_info$group[prior_info$class == "sd" & prior_info$group != ""])
-  for (g in sd_groups) {
-    pri <- c(pri, prior(exponential(1), class = "sd", group = g))
+  if (length(sd_groups) > 0) {
+    sd_priors <- lapply(sd_groups, function(grp) {
+      prior_string("exponential(1)", class = "sd", group = grp)
+    })
+    pri <- c(pri, do.call(c, sd_priors))
   }
 
   if ("sds" %in% prior_info$class) {
@@ -1009,17 +1078,22 @@ build_prior_set_gaussian <- function(scenario_name, cv_label, response_var, form
   }
 
   b_coefs <- unique(prior_info$coef[prior_info$class == "b" & prior_info$coef != ""])
-  for (coef_name in b_coefs) {
-    if (coef_name %in% names(pvals)) {
-      mu <- pvals[[coef_name]][1]
-      sd <- pvals[[coef_name]][2]
-      pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
-    } else {
-      pri <- c(pri, prior(normal(0, 0.5), class = "b", coef = coef_name))
-    }
+  if (length(b_coefs) > 0) {
+    b_priors <- lapply(b_coefs, function(cname) {
+      if (cname %in% names(pvals)) {
+        mu <- pvals[[cname]][1]
+        sd_val <- pvals[[cname]][2]
+        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = cname)
+      } else {
+        prior_string("normal(0, 0.5)", class = "b", coef = cname)
+      }
+    })
+    pri <- c(pri, do.call(c, b_priors))
   }
 
-  pri
+  pri_df <- as.data.frame(pri)
+  key <- paste(pri_df$class, pri_df$group, pri_df$coef, pri_df$dpar, pri_df$resp, pri_df$nlpar, sep = "|")
+  pri[!duplicated(key), , drop = FALSE]
 }
 
 build_prior_set_jsdm <- function(scenario_name, cv_label, formula_obj, data, hab_rrtp_mean) {
@@ -1044,25 +1118,28 @@ build_prior_set_jsdm <- function(scenario_name, cv_label, formula_obj, data, hab
 
   b_rows <- prior_info[prior_info$class == "b" & prior_info$coef != "", , drop = FALSE]
   if (nrow(b_rows) > 0) {
-    for (i in seq_len(nrow(b_rows))) {
+    b_priors <- lapply(seq_len(nrow(b_rows)), function(i) {
       coef_name <- b_rows$coef[i]
       dpar_name <- b_rows$dpar[i]
       if (coef_name %in% names(pvals)) {
         mu <- pvals[[coef_name]][1]
-        sd <- pvals[[coef_name]][2]
+        sd_val <- pvals[[coef_name]][2]
       } else {
         mu <- 0
-        sd <- 0.5
+        sd_val <- 0.5
       }
       if (!is.na(dpar_name) && nzchar(dpar_name)) {
-        pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name, dpar = dpar_name))
+        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = coef_name, dpar = dpar_name)
       } else {
-        pri <- c(pri, prior_string(sprintf("normal(%s, %s)", mu, sd), class = "b", coef = coef_name))
+        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = coef_name)
       }
-    }
+    })
+    pri <- c(pri, do.call(c, b_priors))
   }
 
-  pri
+  pri_df <- as.data.frame(pri)
+  key <- paste(pri_df$class, pri_df$group, pri_df$coef, pri_df$dpar, pri_df$resp, pri_df$nlpar, sep = "|")
+  pri[!duplicated(key), , drop = FALSE]
 }
 
 load_or_fit_model_year_re_with_prior <- function(model_name, cv_name, model_type,
@@ -1072,7 +1149,7 @@ load_or_fit_model_year_re_with_prior <- function(model_name, cv_name, model_type
     stop("prior_tag is required to avoid cache collision")
   }
 
-  prior_norm <- tolower(gsub("[^a-z0-9]", "", normalize_prior_scenario(prior_tag)))
+  prior_norm <- tolower(gsub("[^a-zA-Z0-9]", "", normalize_prior_scenario(prior_tag)))
   model_filename <- sprintf("%s_%s_%s_prior_%s.rds",
                             tolower(model_type), tolower(model_name), cv_name, prior_norm)
   model_path <- file.path(out_dir, model_filename)
@@ -1992,22 +2069,27 @@ priors_gaussian_year_re <- c(
 priors_jsdm_year_re <- NULL
 
 # Standard brms configuration for YEAR RE
-# IMPROVED PARAMETERS (Task 1): Better convergence for Health models
-# iter: 8000 (was 4000), warmup: 4000 (was 2000), adapt_delta: 0.99 (was 0.97)
+# OTIMIZADO: Better convergence vs speed balance
+# iter: 6000 (was 8000), warmup: 2000 (was 4000), adapt_delta: 0.98 (was 0.99)
 brms_args_year_re <- list(
   backend = "cmdstanr",
   cores = BRMS_CORES_DEFAULT,
-  iter = 8000,
-  warmup = 4000,
+  iter = 6000,
+  warmup = 2000,
   chains = BRMS_CHAINS_DEFAULT,
-  control = list(adapt_delta = 0.99, max_treedepth = 12),
-  refresh = 500,
+  threads = threading(BRMS_THREADS_PER_CHAIN_GAUSSIAN),
+  control = list(adapt_delta = 0.98, max_treedepth = 12),
+  refresh = 250,
   save_pars = save_pars(all = TRUE)
 )
 
 brms_args_zoib_year_re <- brms_args_year_re
+brms_args_zoib_year_re$iter <- 5000
+brms_args_zoib_year_re$warmup <- 1500
+brms_args_zoib_year_re$control$adapt_delta <- 0.97
+brms_args_zoib_year_re$threads <- threading(BRMS_THREADS_PER_CHAIN_ZOIB)
+
 if (ENABLE_OPENCL_ZOIB) {
-  brms_args_zoib_year_re$threads <- threading(BRMS_THREADS_PER_CHAIN_ZOIB)
   brms_args_zoib_year_re$opencl <- opencl(ids = c(OPENCL_PLATFORM_ID, OPENCL_DEVICE_ID))
 }
 
@@ -2015,7 +2097,7 @@ get_brms_args_zoib_year_re <- function() {
   if (isTRUE(ZOIB_ACCELERATION_ACTIVE) && ENABLE_OPENCL_ZOIB) {
     return(brms_args_zoib_year_re)
   }
-  brms_args_year_re
+  brms_args_zoib_year_re # Always use ZOIB specific args
 }
 
 # More conservative configuration for JSDM YEAR RE
@@ -2024,12 +2106,14 @@ brms_args_jsdm_year_re <- list(
   backend = "cmdstanr",
   cores = BRMS_CORES_DEFAULT,
   iter = 4000,
-  warmup = 2000,
+  warmup = 1500,
   chains = BRMS_CHAINS_DEFAULT,
+  threads = threading(2),
   control = list(adapt_delta = 0.95, max_treedepth = 12),
   refresh = 500,
   save_pars = save_pars(all = TRUE)
 )
+
 
 # ============================================================================
 # SECTION 11: PROJECT PATHS (for YEAR RE)
