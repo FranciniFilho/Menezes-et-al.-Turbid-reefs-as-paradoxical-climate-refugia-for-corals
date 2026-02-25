@@ -58,7 +58,7 @@ resolve_vp_namespace <- function(run_namespace = c("canonical", "prior_sens_full
     return(list(
       run_namespace = run_namespace,
       prior_scenario_target = prior_scenario_target,
-      scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target)),
+      scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target, perl = TRUE)),
       base_dir = BASE_OUTPUT_DIR_YEAR_RE,
       vp_output_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE, "Variance_Partitioning_YEAR_RE/"),
       model_dirs = list(
@@ -74,14 +74,14 @@ resolve_vp_namespace <- function(run_namespace = c("canonical", "prior_sens_full
   list(
     run_namespace = run_namespace,
     prior_scenario_target = prior_scenario_target,
-    scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target)),
+    scenario_tag_upper = toupper(gsub("[^A-Za-z0-9]", "", prior_scenario_target, perl = TRUE)),
     base_dir = BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS,
     vp_output_dir = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_Variance_Partitioning_YEAR_RE/"),
     model_dirs = list(
       ZOIB_Abundance = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_ZOIB_YEAR_RE/"),
-      RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE/RGR/"),
-      Health_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/HEALTH_PC1/"),
-      Health_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/HEALTH_PC2/"),
+      RGR = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_RGR_YEAR_RE/"),
+      Health_PC1 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/"),
+      Health_PC2 = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_GAUSSIAN_HEALTH_YEAR_RE/"),
       JSDM = file.path(BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS, "PS_FULLGRID_JSDM_DIRICHLET_YEAR_RE/")
     )
   )
@@ -139,20 +139,33 @@ load_winner_models_by_cv <- function(response_type,
                                      run_namespace = VP_NAMESPACE_CFG$run_namespace,
                                      prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
 
+  run_namespace <- tolower(trimws(as.character(run_namespace)))
+  prior_scenario_target <- normalize_prior_scenario(prior_scenario_target)
+
   cat(sprintf("\n=== Loading %s models ===\n", response_type))
 
   models <- list()
 
-  # Define model_type identifier based on response_type
-  model_type_map <- list(
-    "ZOIB_Abundance" = "zoib_abundance_year_re",
-    "RGR" = "rgr",
+  # Combined results (used as fallback if explicit WINNER files are absent)
+  combined_results <- load_combined_results(
+    response_type = response_type,
+    run_namespace = run_namespace,
+    prior_scenario_target = prior_scenario_target
+  )
+
+  # Expected filename prefixes in prior_sens_fullgrid outputs
+  file_prefix_map <- list(
+    "ZOIB_Abundance" = "zoib_year_re",
+    "RGR" = "gaussian_rgr",
     "Health_PC1" = "gaussian_health_pc1_year_re",
     "Health_PC2" = "gaussian_health_pc2_year_re",
     "JSDM" = "jsdm_year_re"
   )
 
-  model_type <- model_type_map[[response_type]]
+  file_prefix <- file_prefix_map[[response_type]]
+  if (is.null(file_prefix)) {
+    stop(sprintf("Unknown response_type for filename mapping: %s", response_type))
+  }
   model_dir <- model_dirs[[response_type]]
 
   if (is.null(model_dir) || !dir.exists(model_dir)) {
@@ -160,14 +173,99 @@ load_winner_models_by_cv <- function(response_type,
     return(NULL)
   }
 
+  # In prior_sens_fullgrid, winner files per CV may be absent.
+  # Select best converged model per CV from combined results and load its .rds.
+  if (run_namespace == "prior_sens_fullgrid") {
+    all_files <- list.files(model_dir, pattern = "\\.rds$", full.names = TRUE, recursive = TRUE)
+    all_files <- all_files[!grepl("\\.loo\\.rds$", all_files, ignore.case = TRUE)]
+    all_files <- all_files[!grepl("WINNER", basename(all_files), ignore.case = TRUE)]
+
+    for (cv in cv_scales) {
+      model_path <- NULL
+
+      if (!is.null(combined_results) && nrow(combined_results) > 0) {
+        converged_flag <- as.character(combined_results$Converged) %in% c("TRUE", "True", "true", "1")
+        cv_df <- combined_results[combined_results$CV == cv & converged_flag, , drop = FALSE]
+
+        if (nrow(cv_df) > 0) {
+          best_row <- cv_df[which.min(cv_df$LOOIC), , drop = FALSE]
+          best_model <- as.character(best_row$Model[1])
+          prior_tag_lower <- tolower(gsub("[^A-Za-z0-9]", "", prior_scenario_target, perl = TRUE))
+
+          expected_name <- sprintf("%s_%s_%s_prior_%s.rds",
+                                   file_prefix,
+                                   tolower(best_model),
+                                   cv,
+                                   prior_tag_lower)
+
+          hits <- all_files[tolower(basename(all_files)) == tolower(expected_name)]
+          if (length(hits) > 0) {
+            model_path <- hits[1]
+            cat(sprintf("  [Fallback] %s %s: using %s (LOOIC=%.2f)\n",
+                        response_type, cv, best_model, best_row$LOOIC[1]))
+          }
+        }
+      }
+
+      if (!is.null(model_path)) {
+        cat(sprintf("  ✓ %s: %s\n", cv, basename(model_path)))
+        models[[cv]] <- list(
+          fit = readRDS(model_path),
+          path = model_path,
+          cv = cv
+        )
+      } else {
+        cat(sprintf("  ⚠ %s: No winner model found\n", cv))
+        models[[cv]] <- NULL
+      }
+    }
+
+    n_loaded <- sum(vapply(models, function(x) !is.null(x), logical(1)))
+    cat(sprintf("  Loaded %d of %d models\n", n_loaded, length(cv_scales)))
+    return(models)
+  }
+
   for (cv in cv_scales) {
     model_path <- find_winner_model(
       model_dir,
       cv,
-      model_type,
+      file_prefix,
       run_namespace = run_namespace,
       prior_scenario_target = prior_scenario_target
     )
+
+    # Fallback: select best converged model per CV from combined results
+    if (is.null(model_path) && !is.null(combined_results) && nrow(combined_results) > 0) {
+      converged_flag <- as.character(combined_results$Converged) %in% c("TRUE", "True", "true", "1")
+      cv_df <- combined_results[combined_results$CV == cv & converged_flag, , drop = FALSE]
+      if (nrow(cv_df) > 0) {
+        best_row <- cv_df[which.min(cv_df$LOOIC), , drop = FALSE]
+        best_model <- as.character(best_row$Model[1])
+        prior_tag_lower <- tolower(gsub("[^A-Za-z0-9]", "", prior_scenario_target, perl = TRUE))
+
+        expected_name <- sprintf("%s_%s_%s_prior_%s.rds",
+                                 file_prefix,
+                                 tolower(best_model),
+                                 cv,
+                                 prior_tag_lower)
+        expected_path <- file.path(model_dir, expected_name)
+
+        if (file.exists(expected_path)) {
+          model_path <- expected_path
+          cat(sprintf("  [Fallback] %s %s: using best converged model %s (LOOIC=%.2f)\n",
+                      response_type, cv, best_model, best_row$LOOIC[1]))
+        } else {
+          # If models are nested in subfolders, search recursively by filename
+          all_files <- list.files(model_dir, pattern = "\\.rds$", full.names = TRUE, recursive = TRUE)
+          all_files <- all_files[!grepl("\\.loo\\.rds$", all_files, ignore.case = TRUE)]
+          hits <- all_files[tolower(basename(all_files)) == tolower(expected_name)]
+          if (length(hits) > 0) {
+            model_path <- hits[1]
+            cat(sprintf("  [Fallback] %s %s: found %s in subdir\n", response_type, cv, basename(model_path)))
+          }
+        }
+      }
+    }
 
     if (!is.null(model_path)) {
       cat(sprintf("  ✓ %s: %s\n", cv, basename(model_path)))
@@ -183,7 +281,7 @@ load_winner_models_by_cv <- function(response_type,
   }
 
   # Count loaded models
-  n_loaded <- sum(sapply(models, function(x) !is.null(x)))
+  n_loaded <- sum(vapply(models, function(x) !is.null(x), logical(1)))
   cat(sprintf("  Loaded %d of %d models\n", n_loaded, length(cv_scales)))
 
   return(models)
@@ -195,6 +293,9 @@ load_winner_models_by_cv <- function(response_type,
 load_combined_results <- function(response_type,
                                   run_namespace = VP_NAMESPACE_CFG$run_namespace,
                                   prior_scenario_target = VP_NAMESPACE_CFG$prior_scenario_target) {
+
+  run_namespace <- tolower(trimws(as.character(run_namespace)))
+  prior_scenario_target <- normalize_prior_scenario(prior_scenario_target)
 
   # Map response types to result files
   if (run_namespace == "prior_sens_fullgrid") {
@@ -222,6 +323,20 @@ load_combined_results <- function(response_type,
     if (run_namespace == "prior_sens_fullgrid" && ("Prior_Scenario" %in% names(df))) {
       df <- df[df$Prior_Scenario == prior_scenario_target, , drop = FALSE]
     }
+
+    # Keep only the relevant response when a shared combined file is used.
+    if ("Response" %in% names(df)) {
+      if (response_type == "ZOIB_Abundance") {
+        df <- df[df$Response == "COVER", , drop = FALSE]
+      } else if (response_type == "RGR") {
+        df <- df[df$Response == "RGR", , drop = FALSE]
+      } else if (response_type == "Health_PC1") {
+        df <- df[df$Response == "HEALTH_PC1", , drop = FALSE]
+      } else if (response_type == "Health_PC2") {
+        df <- df[df$Response == "HEALTH_PC2", , drop = FALSE]
+      }
+    }
+
     return(df)
   }
 

@@ -108,7 +108,30 @@ for (cv_label in cv_scenarios) {
       if (is.null(result$fit)) next
 
       conv_check <- check_convergence(result$fit, model_config$name, cv_label)
-      loo_result <- safe_loo(result$fit, model_config$name, cv_label)
+      
+      # OPTIMIZED LOO: Load from disk if exists, otherwise compute and save
+      loo_path <- paste0(result$path, ".loo.rds")
+      if (file.exists(loo_path)) {
+        cat(sprintf("  [CACHE] Loading LOO result for %s (%s)\n", model_config$name, cv_label))
+        loo_result <- tryCatch({
+          readRDS(loo_path)
+        }, error = function(e) {
+          cat("  [WARNING] Cached LOO failed to load, recalculating...\n")
+          NULL
+        })
+      } else {
+        loo_result <- NULL
+      }
+      
+      if (is.null(loo_result)) {
+        # Use a fast, stable LOO pass here (no moment_match).
+        # If needed, run a full moment_match LOO later only for the final winner.
+        loo_result <- safe_loo(result$fit, model_config$name, cv_label, use_moment_match = FALSE)
+        if (!is.null(loo_result)) {
+          saveRDS(loo_result, loo_path)
+        }
+      }
+      
       convergence_map[[model_config$name]] <- isTRUE(conv_check$passed)
       if (is.null(loo_result)) next
 

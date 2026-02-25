@@ -1100,27 +1100,63 @@ build_prior_set_jsdm <- function(scenario_name, cv_label, formula_obj, data, hab
   scenario_name <- normalize_prior_scenario(scenario_name)
   if (scenario_name == "WeaklyInformative") return(priors_jsdm_year_re)
 
+  # Get available parameters from brms
   prior_info <- get_prior(formula_obj, data = data, family = dirichlet())
   pvals <- get_dataset_specific_priors_jsdm(cv_label, hab_rrtp_mean)
 
-  pri <- c(prior(normal(0, 2), class = "Intercept"))
+  # Collect all priors in a list first, then combine
+  pri_list <- list()
 
-  if ("phi" %in% prior_info$class) {
-    pri <- c(pri, prior(exponential(1), class = "phi"))
-  }
-
-  sd_rows <- prior_info[prior_info$class == "sd" & prior_info$group != "", , drop = FALSE]
-  if (nrow(sd_rows) > 0) {
-    for (i in seq_len(nrow(sd_rows))) {
-      pri <- c(pri, prior(exponential(1), class = "sd", group = sd_rows$group[i]))
+  # 1. Handle Intercepts (likely dpar specific)
+  intercept_rows <- prior_info[prior_info$class == "Intercept", , drop = FALSE]
+  if (nrow(intercept_rows) > 0) {
+    for (i in seq_len(nrow(intercept_rows))) {
+       dpar_val <- intercept_rows$dpar[i]
+       if (!is.na(dpar_val) && nzchar(dpar_val)) {
+         pri_list[[length(pri_list) + 1]] <- prior_string("normal(0, 2)", class = "Intercept", dpar = dpar_val)
+       } else {
+         pri_list[[length(pri_list) + 1]] <- prior_string("normal(0, 2)", class = "Intercept")
+       }
     }
   }
 
+  # 2. Handle phi
+  if ("phi" %in% prior_info$class) {
+    pri_list[[length(pri_list) + 1]] <- prior_string("exponential(1)", class = "phi")
+  }
+
+  # 3. Handle SD (Random Effects)
+  # IMPORTANT: For Dirichlet dpars, sd priors must preserve dpar/coef scope.
+  sd_rows <- prior_info[prior_info$class == "sd" & !is.na(prior_info$group) & nzchar(prior_info$group), , drop = FALSE]
+  if (nrow(sd_rows) > 0) {
+    for (i in seq_len(nrow(sd_rows))) {
+      g <- sd_rows$group[i]
+      coef_val <- sd_rows$coef[i]
+      dpar_val <- sd_rows$dpar[i]
+
+      args <- list(prior = "exponential(1)", class = "sd", group = g)
+      if (!is.na(coef_val) && nzchar(coef_val)) {
+        args$coef <- coef_val
+      }
+      if (!is.na(dpar_val) && nzchar(dpar_val)) {
+        args$dpar <- dpar_val
+      }
+
+      pri_list[[length(pri_list) + 1]] <- do.call(prior_string, args)
+    }
+  }
+
+  # 4. Handle Fixed Effects (b)
   b_rows <- prior_info[prior_info$class == "b" & prior_info$coef != "", , drop = FALSE]
+  # Filter out Intercepts if they appear as class 'b'
+  b_rows <- b_rows[b_rows$coef != "Intercept", , drop = FALSE]
+
   if (nrow(b_rows) > 0) {
-    b_priors <- lapply(seq_len(nrow(b_rows)), function(i) {
+    for (i in seq_len(nrow(b_rows))) {
       coef_name <- b_rows$coef[i]
       dpar_name <- b_rows$dpar[i]
+      
+      # Determine Prior Values
       if (coef_name %in% names(pvals)) {
         mu <- pvals[[coef_name]][1]
         sd_val <- pvals[[coef_name]][2]
@@ -1128,15 +1164,25 @@ build_prior_set_jsdm <- function(scenario_name, cv_label, formula_obj, data, hab
         mu <- 0
         sd_val <- 0.5
       }
+
+      prior_def <- paste0("normal(", mu, ", ", sd_val, ")")
+      
       if (!is.na(dpar_name) && nzchar(dpar_name)) {
-        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = coef_name, dpar = dpar_name)
+        pri_list[[length(pri_list) + 1]] <- prior_string(prior_def, class = "b", coef = coef_name, dpar = dpar_name)
       } else {
-        prior_string(paste0("normal(", mu, ", ", sd_val, ")"), class = "b", coef = coef_name)
+        pri_list[[length(pri_list) + 1]] <- prior_string(prior_def, class = "b", coef = coef_name)
       }
-    })
-    pri <- c(pri, do.call(c, b_priors))
+    }
   }
 
+  # Combine all priors into a single brmsprior object
+  if (length(pri_list) == 0) {
+    return(prior())  # Return empty brmsprior object
+  }
+  
+  pri <- do.call(c, pri_list)
+  
+  # Remove duplicates
   pri_df <- as.data.frame(pri)
   key <- paste(pri_df$class, pri_df$group, pri_df$coef, pri_df$dpar, pri_df$resp, pri_df$nlpar, sep = "|")
   pri[!duplicated(key), , drop = FALSE]
@@ -2100,16 +2146,15 @@ get_brms_args_zoib_year_re <- function() {
   brms_args_zoib_year_re # Always use ZOIB specific args
 }
 
-# More conservative configuration for JSDM YEAR RE
-# OPTIMIZED: Faster but still robust (iter 4000, adapt_delta 0.95, max_treedepth 12)
+# More aggressive configuration for JSDM YEAR RE
+# AGGRESSIVE: More iterations, warmup, adapt_delta for better convergence
 brms_args_jsdm_year_re <- list(
   backend = "cmdstanr",
   cores = BRMS_CORES_DEFAULT,
-  iter = 4000,
-  warmup = 1500,
+  iter = 8000,
+  warmup = 3000,
   chains = BRMS_CHAINS_DEFAULT,
-  threads = threading(2),
-  control = list(adapt_delta = 0.95, max_treedepth = 12),
+  control = list(adapt_delta = 0.99, max_treedepth = 15),
   refresh = 500,
   save_pars = save_pars(all = TRUE)
 )
