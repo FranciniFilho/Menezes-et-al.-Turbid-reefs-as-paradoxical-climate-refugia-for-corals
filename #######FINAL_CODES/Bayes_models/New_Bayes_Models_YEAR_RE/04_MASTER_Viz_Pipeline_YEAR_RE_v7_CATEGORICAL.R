@@ -93,8 +93,8 @@ resolve_viz_namespace_v7 <- function(run_namespace = c("canonical", "prior_sens_
     list(
         run_namespace = run_namespace,
         prior_scenario_target = prior_scenario_target,
-        global_winner_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Global_Winners_YEAR_RE",
-        output_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Figures_YEAR_RE_v7"
+        global_winner_dir = "C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_RESULTS/BAYES_MODELS_FINAL_RES/PS_FULLGRID_Global_Winners_YEAR_RE",
+        output_dir = "C:/Users/rbfra/OneDrive/Abrolhos_Results/PS_FULLGRID_Figures"
     )
 }
 
@@ -1747,9 +1747,9 @@ process_model_year_re_v7 <- function(rds_file, output_base_dir) {
         p_effects <- generate_marginal_effects_year_re_v7(model, model_name, model_info)
         if (!is.null(p_effects)) {
             ggsave(file.path(model_output_dir, "FIGURE_2_Marginal_Effects.png"),
-                   p_effects, width = 14, height = 12, dpi = 600, bg = "white")
+                   p_effects, width = 14, height = 18, dpi = 600, bg = "white")
             ggsave(file.path(model_output_dir, "FIGURE_2_Marginal_Effects.pdf"),
-                   p_effects, width = 14, height = 12, bg = "white")
+                   p_effects, width = 14, height = 18, bg = "white")
             cat("    ✓ FIGURE_2 salvo (com categóricos!)\n")
         }
     }
