@@ -61,7 +61,7 @@ FORCE_REBUILD_CACHE = False
 SST_DIR = r"H:\remote sensing\CRW_SST_FULL"
 MODIS_DIR = r"H:\remote sensing\MODIS_DATA_FULL"
 
-SITES_CSV_PATH = r"C:\Users\rbfra\OneDrive\########CEBIMAR\####PROJETOS\#####Coral trade offs\sites_list_full.csv"
+SITES_CSV_PATH = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######22.04.23\DATA\sites_list_full.csv"
 
 OUTPUT_DIR = os.path.abspath(
     os.path.join(
@@ -170,13 +170,16 @@ def load_sites(path: str) -> pd.DataFrame:
     if "Arch" in df.columns and "Arc" not in df.columns:
         df = df.rename(columns={"Arch": "Arc"})
 
-    required = {"Site_name", "Latitude", "Longitude", "Depth_m", "Arc"}
+    required = {"Site_name", "HAB", "Latitude", "Longitude", "Depth_m", "Arc"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in sites file: {missing}")
 
-    df["Arc"] = df["Arc"].astype(str).str.strip().str.lower()
+    df["Arc"] = df["Arc"].astype(str).str.strip().str.lower().str.split("_").str[0]
     df = df[df["Arc"].isin(["inner", "outer"])].copy()
+    df["Site_name"] = [str(v).strip() for v in df["Site_name"]]
+    df["HAB"] = [str(v).strip() for v in df["HAB"]]
+    df["Site_HAB"] = [f"{site}_{hab}" for site, hab in zip(df["Site_name"], df["HAB"])]
     return df
 
 
@@ -213,7 +216,7 @@ def load_timeseries_for_sites(
 
     print(f"\nLoading {label} from {len(files)} files...")
 
-    out = {r["Site_name"]: {"t": [], "v": []} for _, r in sites_df.iterrows()}
+    out = {r["Site_HAB"]: {"t": [], "v": []} for _, r in sites_df.iterrows()}
 
     open_kwargs = {}
     if NETCDF_ENGINE:
@@ -235,6 +238,7 @@ def load_timeseries_for_sites(
                     da = da.isel(time=0)
 
                 for _, r in sites_df.iterrows():
+                    site_key = r["Site_HAB"]
                     try:
                         val = float(
                             da.sel(
@@ -243,8 +247,8 @@ def load_timeseries_for_sites(
                         )
                         if np.isnan(val):
                             continue
-                        out[r["Site_name"]]["t"].append(d)
-                        out[r["Site_name"]]["v"].append(val)
+                        out[site_key]["t"].append(d)
+                        out[site_key]["v"].append(val)
                     except Exception:
                         continue
         except Exception:
@@ -282,7 +286,7 @@ def calculate_dli_for_sites(
         if d is not None:
             par_by_date[d] = f
 
-    out = {r["Site_name"]: {"t": [], "v": []} for _, r in sites_df.iterrows()}
+    out = {r["Site_HAB"]: {"t": [], "v": []} for _, r in sites_df.iterrows()}
 
     open_kwargs = {}
     if NETCDF_ENGINE:
@@ -309,6 +313,7 @@ def calculate_dli_for_sites(
                     par = par.isel(time=0)
 
                 for _, r in sites_df.iterrows():
+                    site_key = r["Site_HAB"]
                     try:
                         kdval = float(
                             kd.sel(
@@ -328,8 +333,8 @@ def calculate_dli_for_sites(
                         if np.isnan(dli) or dli <= 0:
                             continue
 
-                        out[r["Site_name"]]["t"].append(d)
-                        out[r["Site_name"]]["v"].append(dli)
+                        out[site_key]["t"].append(d)
+                        out[site_key]["v"].append(dli)
                     except Exception:
                         continue
         except Exception:
@@ -424,7 +429,7 @@ def compute_annual_multiscale_metrics(
 ) -> pd.DataFrame:
     rows = []
 
-    for site, s_raw in ts_dict.items():
+    for site_key, s_raw in ts_dict.items():
         s_anom = deseasonalize_by_doy(s_raw)
         if len(s_anom) < 365:
             continue
@@ -433,8 +438,13 @@ def compute_annual_multiscale_metrics(
         thr90 = float(np.nanpercentile(s_anom.values, 90))
         thr95 = float(np.nanpercentile(s_anom.values, 95))
 
-        arc_vals = sites_df.loc[sites_df["Site_name"] == site, "Arc"].values
-        arc = str(arc_vals[0]) if len(arc_vals) else "unknown"
+        site_meta = sites_df.loc[sites_df["Site_HAB"] == site_key]
+        if len(site_meta) == 0:
+            continue
+        site_meta = site_meta.iloc[0]
+        site_name = str(site_meta["Site_name"])
+        hab = str(site_meta["HAB"])
+        arc = str(site_meta["Arc"])
 
         for year, s_year in s_anom.groupby(s_anom.index.year):
             if year < START_YEAR or year > END_YEAR:
@@ -455,7 +465,9 @@ def compute_annual_multiscale_metrics(
             rows.append(
                 {
                     "Variable": variable_name,
-                    "Site_name": site,
+                    "Site_HAB": site_key,
+                    "Site_name": site_name,
+                    "HAB": hab,
                     "Arc": arc,
                     "year": int(year),
                     "n_obs": int(len(s_year)),
@@ -723,16 +735,18 @@ if __name__ == "__main__":
         ["analysed_sst", "sst"],
         sites,
         "SST",
-        "cache_sst.pkl",
+        "cache_sst_site_hab.pkl",
     )
     chl_ts = load_timeseries_for_sites(
         chl_files,
         ["chlor_a"],
         sites,
         "Chl-a",
-        "cache_chl.pkl",
+        "cache_chl_site_hab.pkl",
     )
-    dli_ts = calculate_dli_for_sites(kd_files, par_files, sites, "cache_dli.pkl")
+    dli_ts = calculate_dli_for_sites(
+        kd_files, par_files, sites, "cache_dli_site_hab.pkl"
+    )
 
     sst_site = compute_annual_multiscale_metrics(sst_ts, sites, "SST")
     dli_site = compute_annual_multiscale_metrics(dli_ts, sites, "DLI")

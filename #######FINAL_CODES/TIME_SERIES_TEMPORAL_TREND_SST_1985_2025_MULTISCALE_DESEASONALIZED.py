@@ -75,7 +75,7 @@ FORCE_REBUILD_CACHE = False
 SST_DIR = r"H:\remote sensing\CRW_SST_FULL"
 SST_PATTERN = "coraltemp_v3.1_*.nc"
 
-SITES_CSV_PATH = r"C:\Users\rbfra\OneDrive\########CEBIMAR\####PROJETOS\#####Coral trade offs\sites_list_full.csv"
+SITES_CSV_PATH = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######22.04.23\DATA\sites_list_full.csv"
 
 # Output directory inside repository
 OUTPUT_DIR = os.path.abspath(
@@ -166,13 +166,16 @@ def load_sites(path: str) -> pd.DataFrame:
     if "Arch" in df.columns and "Arc" not in df.columns:
         df = df.rename(columns={"Arch": "Arc"})
 
-    required = {"Site_name", "Latitude", "Longitude", "Depth_m", "Arc"}
+    required = {"Site_name", "HAB", "Latitude", "Longitude", "Depth_m", "Arc"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in sites file: {missing}")
 
-    df["Arc"] = df["Arc"].astype(str).str.strip().str.lower()
+    df["Arc"] = df["Arc"].astype(str).str.strip().str.lower().str.split("_").str[0]
     df = df[df["Arc"].isin(["inner", "outer"])].copy()
+    df["Site_name"] = [str(v).strip() for v in df["Site_name"]]
+    df["HAB"] = [str(v).strip() for v in df["HAB"]]
+    df["Site_HAB"] = [f"{site}_{hab}" for site, hab in zip(df["Site_name"], df["HAB"])]
     return df
 
 
@@ -219,7 +222,7 @@ def compute_site_indexers_from_reference_file(
         lat = ds["lat"].values
         lon = ds["lon"].values
 
-    site_names = sites_df["Site_name"].astype(str).tolist()
+    site_names = sites_df["Site_HAB"].astype(str).tolist()
     ilat = []
     ilon = []
     for _, r in sites_df.iterrows():
@@ -309,7 +312,9 @@ def load_or_build_sst_daily_table(
         if year not in by_year:
             continue
 
-        cache_parquet = os.path.join(CACHE_DIR, f"sst_sites_daily_{year}.parquet")
+        cache_parquet = os.path.join(
+            CACHE_DIR, f"sst_sites_daily_site_hab_{year}.parquet"
+        )
         if USE_CACHE and (not FORCE_REBUILD_CACHE) and os.path.exists(cache_parquet):
             df_y = pd.read_parquet(cache_parquet)
             # Ensure columns order
@@ -419,7 +424,9 @@ def compute_annual_sst_metrics_by_site(
     results = []
 
     for _, r in sites_df.iterrows():
-        site = str(r["Site_name"])
+        site = str(r["Site_HAB"])
+        site_name = str(r["Site_name"])
+        hab = str(r["HAB"])
         arc = str(r["Arc"])
         if site not in sst_daily_df.columns:
             continue
@@ -470,7 +477,9 @@ def compute_annual_sst_metrics_by_site(
 
             results.append(
                 {
-                    "Site_name": site,
+                    "Site_HAB": site,
+                    "Site_name": site_name,
+                    "HAB": hab,
                     "Arc": arc,
                     "year": int(year),
                     "n_obs": n_obs,
@@ -785,7 +794,7 @@ def create_fig_availability(
 
     for y, arc in enumerate(["inner", "outer"]):
         arc_sites = (
-            sites_df.loc[sites_df["Arc"] == arc, "Site_name"].astype(str).tolist()
+            sites_df.loc[sites_df["Arc"] == arc, "Site_HAB"].astype(str).tolist()
         )
         arc_sites = [s for s in arc_sites if s in sst_daily_df.columns]
         if not arc_sites:
