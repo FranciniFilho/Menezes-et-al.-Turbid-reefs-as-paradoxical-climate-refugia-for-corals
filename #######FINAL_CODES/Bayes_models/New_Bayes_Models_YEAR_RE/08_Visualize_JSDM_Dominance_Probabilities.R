@@ -129,6 +129,44 @@ cat(sprintf("  Site-level: %d unique SITE x HAB combinations\n", nrow(site_level
 cat("  Status distribution:\n")
 print(table(site_level$status))
 
+# ── Env. variability data from CV_ALL window (JSDM model predictor) ──────────
+cv_all_path <- paste0(
+  "C:/Users/rbfra/OneDrive/",
+  "########PUBLICACOES/",
+  "############Menezes et al. Mus his distribution and abundance Abrolhos/",
+  "######FINAL/#######FINAL_RESULTS/",
+  "#####output_local_PCA_CV_all_FINAL/",
+  "dados_abundancia_integrados_long_format.csv"
+)
+
+first_line_cv <- readLines(cv_all_path, n = 1L, encoding = "UTF-8")
+delim_cv      <- if (grepl(";", first_line_cv, fixed = TRUE)) ";" else ","
+dec_cv        <- if (delim_cv == ";") "," else "."        # BR locale: ";" sep + "," decimal
+env_raw       <- read.csv(cv_all_path, sep = delim_cv, dec = dec_cv,
+                          stringsAsFactors = FALSE, fileEncoding = "UTF-8-BOM")
+
+# Site × HAB means – PCA scores AND raw inter-annual CVs (collapse across years)
+# Raw CVs are extracted alongside PCA scores to avoid CV_ALL axis-orientation
+# artefacts: in CV_ALL the SST loading on PC1 flips sign relative to CV_02/CV_30,
+# so the raw metrics are used directly for Panel D (unambiguous interpretation).
+env_site <- env_raw %>%
+  group_by(SITE, HAB) %>%
+  summarise(
+    PC1_VAR = mean(PC1_VARIABILITY, na.rm = TRUE),
+    PC2_VAR = mean(PC2_VARIABILITY, na.rm = TRUE),
+    SST_CV  = mean(SST_CV_ALL,  na.rm = TRUE),   # raw thermal variability (%)
+    CHL_CV  = mean(CHL_CV_ALL,  na.rm = TRUE),   # raw productivity variability (%)
+    DLI_CV  = mean(CV_DLI_LOCAL, na.rm = TRUE),  # raw light variability (%)
+    .groups = "drop"
+  )
+
+# Left-join into site_level (all downstream subsets inherit these columns)
+site_level <- site_level %>%
+  left_join(env_site, by = c("SITE", "HAB"))
+
+cat(sprintf("  Env. variability joined: %d/%d sites matched\n",
+            sum(!is.na(site_level$PC1_VAR)), nrow(site_level)))
+
 # ── 5. FIGURE 8: P(Competitor > Coral) by ARC × HAB ────────────────────────
 # Two competitors shown as grouped bars within each ARC × HAB cell.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -330,6 +368,12 @@ refugia_long <- refugia_long %>%
 stress_long <- stress_long %>%
   mutate(site_hab = factor(site_hab, levels = stress_order))
 
+# Zone colour palette for Panel D violin plot
+ZONE_COLS <- c(
+  "CCA-dominated\n(Refugia)"       = "#0072B2",   # blue (coral-favored)
+  "Macroalgae-dominated\n(Stress)" = "#D55E00"    # orange (stress)
+)
+
 # Panel A – Refugia
 fig10a <- ggplot(refugia_long,
                  aes(x = site_hab, y = Proportion, fill = Functional_group)) +
@@ -412,26 +456,80 @@ fig10c <- ggplot(summary_comp,
   theme(axis.text.x   = element_text(face = "bold", size = 12),
         legend.position = "right")
 
+# ── Panel D: Environmental variability – violin + jitter (raw CVs) ────────────
+# PCA scores from CV_ALL are NOT used here because the SST loading on PC1 flips
+# sign between CV_02/CV_30 and CV_ALL (artefact of PCA axis orientation), making
+# the direction of the PC1 gradient ambiguous for interpretation. Instead, the
+# three most informative raw inter-annual CVs: SST_CV (thermal stability),
+# CHL_CV (productivity / nutrient-pulse hypothesis), DLI_CV (light variability).
+env_violin_df <- bind_rows(
+  refugia_sites %>% mutate(Zone = "CCA-dominated\n(Refugia)"),
+  stress_sites  %>% mutate(Zone = "Macroalgae-dominated\n(Stress)")
+) %>%
+  select(Zone, SITE, HAB, SST_CV, CHL_CV, DLI_CV) %>%
+  pivot_longer(cols = c(SST_CV, CHL_CV, DLI_CV),
+               names_to  = "Variable",
+               values_to = "Value") %>%
+  mutate(
+    Zone = factor(Zone, levels = c("CCA-dominated\n(Refugia)",
+                                   "Macroalgae-dominated\n(Stress)")),
+    Variable = factor(
+      dplyr::recode(Variable,
+        "SST_CV" = "SST inter-annual CV\n(Thermal, %)",
+        "CHL_CV" = "Chlorophyll inter-annual CV\n(Productivity, %)",
+        "DLI_CV" = "DLI inter-annual CV\n(Light, %)"
+      ),
+      levels = c("SST inter-annual CV\n(Thermal, %)",
+                 "Chlorophyll inter-annual CV\n(Productivity, %)",
+                 "DLI inter-annual CV\n(Light, %)")
+    )
+  )
+
+set.seed(42)
+fig10d <- ggplot(env_violin_df,
+                 aes(x = Zone, y = Value, fill = Zone, color = Zone)) +
+  geom_violin(trim = FALSE, alpha = 0.35, linewidth = 0.5, color = NA) +
+  geom_jitter(width = 0.08, size = 2.4, alpha = 0.88, shape = 16) +
+  facet_wrap(~ Variable, scales = "free_y", nrow = 1) +
+  scale_fill_manual(values  = ZONE_COLS, guide = "none") +
+  scale_color_manual(values = ZONE_COLS, guide = "none") +
+  labs(
+    title    = "(d) Environmental drivers: refugia vs. stress zones",
+    subtitle = "CV_ALL window \u00b7 Raw inter-annual coefficients of variation (JSDM predictor window)",
+    x        = NULL,
+    y        = "Coefficient of variation (%)",
+    caption  = paste(
+      "Raw inter-annual CVs used instead of PCA scores to avoid CV_ALL axis-orientation artefact",
+      "(SST loading on PC1 flips sign between CV_02/CV_30 and CV_ALL).",
+      "Higher CHL and DLI CVs in refugia reflect dynamic nutrient/light regimes; lower CVs in stress zones = chronic oligotrophy.",
+      sep = "\n"
+    )
+  ) +
+  theme(
+    axis.text.x = element_text(size = 9.5, lineheight = 1.1),
+    strip.text  = element_text(face = "bold", size = 11)
+  )
+
 # Assemble with patchwork only (avoids cowplot/ggsave incompatibility)
 fig10 <- (
   (fig10a + theme(legend.position = "none")) |
   (fig10b + theme(legend.position = "none"))
 ) /
-  fig10c +
-  plot_layout(heights = c(1.2, 0.9), guides = "collect") +
+  (fig10c | fig10d) +
+  plot_layout(heights = c(1.2, 1.1), guides = "collect") +
   plot_annotation(
-    title   = "Community Composition: CCA-dominated vs Macroalgae-dominated Zones",
+    title   = "Community Composition and Environmental Context: CCA-dominated vs Macroalgae-dominated Zones",
     caption = paste(
-      "Stacked bars show posterior mean proportions from JSDM Dirichlet model.",
-      "A: CCA-dominated zones — sites with P(Macro > Coral) < 0.05.",
-      "B: Macroalgae-dominated zones — sites with P(Macro > Coral) > 0.95.",
+      "Stacked bars: posterior mean proportions from JSDM Dirichlet model (CV_ALL, WeaklyInformative prior).",
+      "A: CCA-dominated zones [P(Macro > Coral) < 0.05].  B: Macroalgae-dominated zones [P(Macro > Coral) > 0.95].",
       "C: Mean composition comparison across categories.",
+      "D: Raw inter-annual CVs (SST and Chlorophyll) from CV_ALL window — shown instead of PCA scores to avoid axis-orientation artefact.",
       sep = "\n"
     )
   ) &
   theme(legend.position = "bottom")
 
-save_fig(fig10, "FIGURE_10_Refugia_vs_Stress", 18, 12)
+save_fig(fig10, "FIGURE_10_Refugia_vs_Stress", 22, 14)   # width: 18 → 22 (3 facets in panel D)
 
 # ── 8. FIGURE 11: Reef-level gradient – both competitors ────────────────────
 # Grouped bars: P(Macro > Coral) vs P(CCA > Coral) per reef,
@@ -553,7 +651,7 @@ cat(paste(rep("=", 70), collapse = ""), "\n")
 cat(sprintf("All figures saved to: %s\n\n", output_dir))
 cat("  FIGURE_8_Dominance_by_ARC_HAB     – P(Macro) and P(CCA) per ARC×HAB\n")
 cat("  FIGURE_9_Dominance_Map             – Spatial map (fixed aspect + legend)\n")
-cat("  FIGURE_10_Refugia_vs_Stress        – 3-panel composition (A:refugia B:stress C:mean)\n")
+cat("  FIGURE_10_Refugia_vs_Stress        – 4-panel composition (A:refugia B:stress C:mean D:env variability)\n")
 cat("  FIGURE_11_Dominance_by_Reef        – Both competitors per reef\n")
 cat("  FIGURE_COMBINED_Dominance_Analysis – Combined Fig8 + Fig9\n")
 cat("  TABLE_Dominance_Summary.csv\n\n")

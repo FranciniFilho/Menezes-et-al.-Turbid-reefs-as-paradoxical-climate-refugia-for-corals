@@ -232,7 +232,9 @@ cat(sprintf("  Response categories in model: %s\n",
 if (!is.null(resp_dimnames)) {
   muss_idx  <- which(grepl("MUSSISMILIA", resp_dimnames, ignore.case = TRUE))
   macro_idx <- which(grepl("MACROALGAE",  resp_dimnames, ignore.case = TRUE))
-  cca_idx   <- which(grepl("^CCA",        resp_dimnames, ignore.case = TRUE))
+  cca_idx   <- which(grepl("CCA",           resp_dimnames, ignore.case = TRUE))
+  # Filter out false positives (e.g. if a category name contained "CCA" as substring)
+  cca_idx   <- setdiff(cca_idx, macro_idx)
 } else {
   # Fallback: derive from formula cbind() order
   # make_jsdm_formula_year_re orders: MUSSISMILIA, TURF, CCA, CYANO, MACROALGAE
@@ -284,6 +286,48 @@ dominance_results <- data.frame(
   lwr_MACROALGAE   = apply(macro_mat, 2, quantile, 0.025, na.rm = TRUE),
   upr_MACROALGAE   = apply(macro_mat, 2, quantile, 0.975, na.rm = TRUE)
 )
+
+# ============================================================================
+# MARGINAL PREDICTIONS (re_formula = NA) — for general ARC/HAB claims
+# ============================================================================
+# Conditional predictions (above) include REEF random effects, which for
+# MACROALGAE span ±3.2 on the log-ratio scale (= 25× multiplier between
+# extreme reefs). This makes conditional P(Macro > Coral) extreme at
+# individual reefs but unrepresentative of the general environmental gradient.
+#
+# Marginal predictions integrate over the RE distribution, giving the
+# population-average response to the environmental predictors only.
+# Use MARGINAL for general ARC/HAB/gradient claims in the manuscript.
+# Use CONDITIONAL for reef-specific claims only.
+# ============================================================================
+
+cat("\n=== Extracting MARGINAL fitted values (re_formula = NA) ===\n")
+
+marginal_vals <- tryCatch({
+  fitted(model, summary = FALSE, re_formula = NA, ndraws = 2000)
+}, error = function(e) {
+  cat(sprintf("  Marginal fitted() failed: %s\n", e$message))
+  NULL
+})
+
+if (!is.null(marginal_vals)) {
+  cat(sprintf("  Marginal array dimensions: %s\n", paste(dim(marginal_vals), collapse = " x ")))
+
+  # Use same indices as conditional (verified above)
+  marg_muss_mat  <- marginal_vals[, , muss_idx,  drop = TRUE]
+  marg_macro_mat <- marginal_vals[, , macro_idx, drop = TRUE]
+  marg_cca_mat   <- if (length(cca_idx) > 0) marginal_vals[, , cca_idx, drop = TRUE] else matrix(NA, dim(marginal_vals)[1], n_obs)
+
+  dominance_results$P_macro_coral_marginal <- colMeans(marg_macro_mat > marg_muss_mat, na.rm = TRUE)
+  dominance_results$P_cca_coral_marginal   <- colMeans(marg_cca_mat   > marg_muss_mat, na.rm = TRUE)
+  dominance_results$mean_MUSSISMILIA_marg  <- colMeans(marg_muss_mat,  na.rm = TRUE)
+  dominance_results$mean_MACROALGAE_marg   <- colMeans(marg_macro_mat, na.rm = TRUE)
+  dominance_results$mean_CCA_marg          <- colMeans(marg_cca_mat,   na.rm = TRUE)
+
+  cat("  Marginal dominance computed successfully.\n")
+} else {
+  cat("  WARNING: Marginal extraction failed — only conditional results available.\n")
+}
 
 # ============================================================================
 # MERGE: dominance probabilities ← obs_meta ← geographic metadata
@@ -386,6 +430,11 @@ summary_arch_hab <- dominance_full %>%
     mean_MUSSISMILIA   = mean(mean_MUSSISMILIA, na.rm = TRUE),
     mean_MACROALGAE    = mean(mean_MACROALGAE,  na.rm = TRUE),
     mean_CCA           = mean(mean_CCA,         na.rm = TRUE),
+    # Marginal (population-average) dominance — preferred for general claims
+    mean_P_macro_marginal = if ("P_macro_coral_marginal" %in% names(pick(everything())))
+      mean(P_macro_coral_marginal, na.rm = TRUE) else NA_real_,
+    mean_P_cca_marginal = if ("P_cca_coral_marginal" %in% names(pick(everything())))
+      mean(P_cca_coral_marginal, na.rm = TRUE) else NA_real_,
     .groups = "drop"
   )
 
@@ -447,10 +496,16 @@ cat("\nTOP 10 MACROALGAE-DOMINATED ZONES (highest P_macro > coral):\n")
 print(stress_sites[, c("REEF", "SITE", "HAB", "ARCH", "P_macro_coral",
                         "mean_MUSSISMILIA", "mean_MACROALGAE")])
 
-cat("\nSUMMARY BY ARCH x HAB:\n")
+cat("\nSUMMARY BY ARCH x HAB (CONDITIONAL — includes REEF random effects):\n")
 print(summary_arch_hab[, c("ARCH", "HAB", "n_sites", "n_obs",
                              "mean_P_macro_coral", "mean_MUSSISMILIA",
                              "mean_MACROALGAE")])
+
+if ("mean_P_macro_marginal" %in% names(summary_arch_hab)) {
+  cat("\nSUMMARY BY ARCH x HAB (MARGINAL — population-average, preferred for general claims):\n")
+  print(summary_arch_hab[, c("ARCH", "HAB", "n_sites", "n_obs",
+                               "mean_P_macro_marginal", "mean_P_cca_marginal")])
+}
 
 cat("\n")
 cat(paste(rep("=", 70), collapse = ""), "\n")
