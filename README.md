@@ -1,7 +1,14 @@
-# Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
+Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
+Carolina F. Schlosser1,2,*, Rafael Menezes3,*, Mariana Marcondes Couto1,2, Ericka O.C. Coni1, Camilo M. Ferreira4, Pedro M. Meirelles4, Andreia Barbosa1, Marcelo V. Kitahara1, Miguel Mies6, Samuel C. Faria1, Ronaldo B. Francini-Filho1,**
+1Centro de Biologia Marinha, Universidade de São Paulo. Rodovia Manuel Hypólito do Rego, km 131,5 – 11612-109 São Sebastião, SP, Brazil.
+2Programa de Pós-graduação em Ecologia, Instituto de Biociências, Universidade de São Paulo, Rua do Matão, 321, Cidade Universitária, 05508-090, São Paulo, Brazil
+Email: carolina.schlosser@usp.br
+3Universidade Federal Rural de Pernambuco, Departamento de Pesca e Aquicultura. Universidade Federal Rural de Pernambuco Dois Irmãos 52171900 - Recife, PE – Brasil. Email: rafaelmenezes@gmail.com
+4Instituto de Biologia, Universidade Federal da Bahia (UFBA), 40170-290, Salvador, BA, Brazil. E-mail: pedrommeirelles@gmail.com
+5Instituto Oceanográfico, Universidade de São Paulo, Praça do Oceanográfico, 191, Cidade Universitária, São Paulo, SP 05508-120, Brazil
+* Authors contributed equally to this work.
+**Corresponding author. E-mail: francinifilho@usp.br
 
-> **Authors**: Schlosser, Menezes, Duarte, Feitosa, Ferreira, Kelmo, Zilberberg, Francini-Filho
-> **Status**: Under revision (Round 3)
 
 ## Overview
 
