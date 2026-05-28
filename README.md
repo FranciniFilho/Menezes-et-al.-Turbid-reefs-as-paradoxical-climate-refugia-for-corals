@@ -1,15 +1,15 @@
-## Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
+##Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
 
-## Carolina F. Schlosser1,2,*, Rafael Menezes3,*, Mariana Marcondes Couto1,2, Ericka O.C. Coni1, Camilo M. Ferreira4, Pedro M. Meirelles4, Andreia Barbosa1, Marcelo V. Kitahara1, Miguel Mies6, Samuel C. Faria1, Ronaldo B. Francini-Filho1,**
+##Rafael Menezes1,*, Carolina F. Schlosser2,3,*, Mariana Marcondes Couto2,3, Ericka O.C. Coni2, Camilo M. Ferreira4, Pedro M. Meirelles4, Andreia C.C. Barbosa2, Marcelo V. Kitahara2, Miguel Mies5, Samuel C. Faria2, Ronaldo B. Francini-Filho2,**
 
-## 1Centro de Biologia Marinha, Universidade de São Paulo. Rodovia Manuel Hypólito do Rego, km 131,5 – 11612-109 São Sebastião, SP, Brazil.
-2Programa de Pós-graduação em Ecologia, Instituto de Biociências, Universidade de São Paulo, Rua do Matão, 321, Cidade Universitária, 05508-090, São Paulo, Brazil
-Email: carolina.schlosser@usp.br
-3Universidade Federal Rural de Pernambuco, Departamento de Pesca e Aquicultura. Universidade Federal Rural de Pernambuco Dois Irmãos 52171900 - Recife, PE – Brasil. Email: rafaelmenezes@gmail.com
-4Instituto de Biologia, Universidade Federal da Bahia (UFBA), 40170-290, Salvador, BA, Brazil. E-mail: pedrommeirelles@gmail.com
+1Universidade Federal Rural de Pernambuco, Departamento de Pesca e Aquicultura. Universidade Federal Rural de Pernambuco Dois Irmãos 52171900 - Recife, PE – Brasil. 
+2Centro de Biologia Marinha, Universidade de São Paulo. Rodovia Manuel Hypólito do Rego, km 131,5 – 11612-109 São Sebastião, SP, Brazil. 
+3Programa de Pós-graduação em Ecologia, Instituto de Biociências, Universidade de São Paulo, Rua do Matão, 321, Cidade Universitária, 05508-090, São Paulo, Brazil
+4Instituto de Biologia, Universidade Federal da Bahia (UFBA), 40170-290, Salvador, BA, Brazil. 
 5Instituto Oceanográfico, Universidade de São Paulo, Praça do Oceanográfico, 191, Cidade Universitária, São Paulo, SP 05508-120, Brazil
 * Authors contributed equally to this work.
-**Corresponding author. E-mail: francinifilho@usp.br
+**Corresponding author. E-mail: francinifilho@usp.br; +55 83 999528622
+
 
 ## Abstract
 Naturally stressful reef environments can enhance coral thermal tolerance, yet whether chronic stress exposure improves or erodes baseline coral performance remains unresolved. Combining three years of in situ monitoring with satellite-derived environmental data across Brazil's Abrolhos Bank, we employed Bayesian hierarchical models and Joint Species Distribution Models (JSDMs) to assess the health, growth, and competitive dynamics of the endemic reef-building coral Mussismilia hispida. Coral metrics were modeled against the magnitude and multiscale temporal variability of SST, chlorophyll-a (Chl-a), and Daily Light Integral (DLI), alongside the frequency of acute thermal stress (DHW > 4). Reef walls of turbid coastal reefs emerged as paradoxical refugia: despite experiencing the highest environmental instability and 15-fold more frequent acute thermal stress, they supported the healthiest coral populations, underpinned by lower DLI, cooler baseline SST, and elevated Chl-a. Habitat type, not the environmental gradients themselves, was the single strongest predictor of coral health, with walls consistently outperforming reef tops and rocky reefs. Seasonal-scale environmental variability conferred an additional health benefit, consistent with an acclimatization mechanism operating at the timescale of symbiont and lipid dynamics. At the community level, JSDMs identified DLI as the primary driver of benthic composition, with macroalgal dominance over M. hispida increasing sharply under higher irradiance. Environmental variability independently modulated competitive outcomes: SST and DLI variability suppressed macroalgae, whereas Chl-a and DLI fluctuations promoted beneficial crustose coralline algae (CCA). We propose that dynamic coastal environments protect corals through a dual mechanism, functioning simultaneously as acclimatization arenas that build coral thermal tolerance without the typical physiological costs and as ecological filters that suppress competitors while promoting facilitating species. Protecting these highly variable yet functionally critical refugia should be a conservation priority to safeguard corals in a rapidly warming ocean.
