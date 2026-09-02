@@ -391,9 +391,14 @@ for (sn in names(scenarios)) {
 }
 
 # --- 8.2 Carregar dados de Magnitude (usando CV_02 como referência) ---
+# NOTA: Os scores e loadings de Magnitude de CV_02 têm sinais invertidos em
+# relação a CV_ALL (causa: force_positive_pc1="SST" aplicado inconsistentemente).
+# O JSDM vencedor (CV_ALL) usa a convenção CV_ALL, portanto ambos os eixos
+# (PC1 e PC2) são explicitamente invertidos aqui para harmonizar a figura com
+# o texto do manuscrito e com os coeficientes do modelo.
 
 cat("\n------------------------------------------------------------------------\n")
-cat("Carregando dados de Magnitude (CV_02)...\n")
+cat("Carregando dados de Magnitude (CV_02, com inversão de sinal para convenção CV_ALL)...\n")
 cat("------------------------------------------------------------------------\n")
 
 sc_mag <- scenarios[["CV_02"]]
@@ -401,6 +406,13 @@ df_mag <- all_scenario_data[["CV_02"]]$data
 loadings_mag <- load_loadings(file.path(sc_mag$dir, sc_mag$loadings_mag), 
                                sc_mag$csv_sep, sc_mag$csv_dec)
 ev_mag <- calculate_explained_variance(df_mag, sc_mag$var_mag_cols)
+
+# Inverter ambos os eixos de Magnitude para convenção CV_ALL
+# (PC1 CV_ALL: SST negativo, Chl positivo; PC2 CV_ALL: DLI positivo)
+df_mag$pc1_mag <- -df_mag$pc1_mag
+df_mag$pc2_mag <- -df_mag$pc2_mag
+loadings_mag$PC1 <- -loadings_mag$PC1
+loadings_mag$PC2 <- -loadings_mag$PC2
 
 cat(sprintf("  Variância explicada: PC1 = %.1f%%, PC2 = %.1f%%\n", ev_mag[1], ev_mag[2]))
 

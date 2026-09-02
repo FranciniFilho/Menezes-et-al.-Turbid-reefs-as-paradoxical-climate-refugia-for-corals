@@ -3,6 +3,11 @@
 # GitHub Publication Ready - Updated 2026-01-19
 # =============================================================================
 
+# --- Secrets & API Keys (NEVER commit these) ---
+.env
+*.env
+.env.*
+
 # --- AI Assistant Metadata & Configurations ---
 # These contain local agent configurations, skills, and conversation artifacts
 .agent/
