@@ -61,7 +61,7 @@ Every script verifies at startup that it is being run from the repository root a
 | 4 | Python | `FINAL_DATA_INTEGRATION.py` | Integrate biological + environmental data |
 | 5 | R | `Bayes_models/New_Bayes_Models_YEAR_RE/00_RUN_ALL_YEAR_RE_MODELS.R` | Bayesian modeling (210 models) |
 | 6 | R | `04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R` | Publication figures |
-| 7 | R | `07/08_Extract|Visualize_JSDM_Dominance*.R` | JSDM dominance analysis |
+| 7 | R | `07_Extract_JSDM_Dominance_Probabilities.R`, `08_Visualize_JSDM_Dominance_Probabilities.R` | JSDM dominance analysis |
 
 ## Model Architecture
 
@@ -97,5 +97,5 @@ All curated input data are tracked in this repository (`#######FINAL_DATA/`, 42 
 
 ## Documentation
 
-- **[DATA_REGISTRY.md](#######FINAL_DATA/DATA_REGISTRY.md)** — complete manifest of input data
+- **[DATA_REGISTRY.md](%23%23%23%23%23%23%23FINAL_DATA/DATA_REGISTRY.md)** — complete manifest of input data
 - **[docs/](docs/)** — JSDM correction guide and Dirichlet-model technical reference
