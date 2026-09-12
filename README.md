@@ -99,3 +99,7 @@ All curated input data are tracked in this repository (`#######FINAL_DATA/`, 42 
 
 - **[DATA_REGISTRY.md](%23%23%23%23%23%23%23FINAL_DATA/DATA_REGISTRY.md)** — complete manifest of input data
 - **[docs/](docs/)** — JSDM correction guide and Dirichlet-model technical reference
+
+## License
+
+This repository (analysis code and curated data) is licensed under the **Creative Commons Attribution 4.0 International License** — see [LICENSE](LICENSE). © 2026 Menezes et al.
