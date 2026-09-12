@@ -1,8 +1,8 @@
 # Data Registry — Centralized Input Data
 
-> **Last updated**: 2025-07  
+> **Last updated**: 2026-09-12  
 > **Purpose**: Manifest of all input data files centralized in `#######FINAL_DATA/`.  
-> Scripts still reference original paths — a future migration will update them.
+> **Status**: path migration COMPLETE — all non-legacy scripts read from `#######FINAL_DATA/` and write to `#######FINAL_RESULTS/`.
 
 ---
 
@@ -56,18 +56,17 @@ Each CV subdirectory contains PCA outputs from `PCA_LOCAL_bubbleplot.py` / `PCA_
 | File | Description | Used By |
 |------|-------------|---------|
 | `dados_abundancia_integrados_long_format.csv` | Integrated abundance + PCA scores (long format); **primary input for ZOIB & JSDM models** | 01_ZOIB, 03_JSDM scripts |
-| `PCA_scores_Magnitude_CV_02.csv` | PCA scores for magnitude (mean SST, DLI, CHL) | FINAL_DATA_INTEGRATION.py |
-| `PCA_scores_Variability_CV_02.csv` | PCA scores for variability (CV of SST, DLI, CHL) | FINAL_DATA_INTEGRATION.py |
-| `PCA_loadings_Magnitude.csv` | PCA loading matrix (magnitude component) | PCA visualization scripts |
-| `PCA_loadings_Variability_CV_02.csv` | PCA loading matrix (variability component) | PCA visualization scripts |
-| `PCA_explained_variance_Magnitude.csv` | Explained variance per component (magnitude) | Documentation & figures |
-| `PCA_explained_variance_Variability_CV_02.csv` | Explained variance per component (variability) | Documentation & figures |
+| `dados_consolidados_com_scores_das_duas_PCAs_CV2.csv` | Integrated abundance + both PCA score sets (CV_02) | FINAL_DATA_INTEGRATION.py, modeling scripts |
+| `loadings_PCA_Magnitude_CV_2.csv` | PCA loading matrix (magnitude) | PCA visualization scripts |
+| `loadings_PCA_Variability_CV_2.csv` | PCA loading matrix (variability) | PCA visualization scripts |
+| `dados_abundancia_integrados_long_format.csv` | **Primary ZOIB & JSDM input** (long format) | 01_ZOIB, 03_JSDM |
+| `resumo_segmentos_por_site.csv/.xlsx` | Per-site segment summary | Documentation |
 
 ### CV_30/ (Seasonal variability window — 30 months)
-Same file structure as CV_02, with `_CV_30` suffixes.
+Same structure as CV_02 with `_CV30` suffixes (`dados_consolidados_com_scores_das_duas_PCAs_CV30.csv`, `loadings_PCA_*_CV_30.csv`).
 
 ### CV_ALL/ (Full time-series variability window)
-Same file structure as CV_02, with `_CV_all` suffixes.
+Same structure as CV_02 with `_CVall` suffixes (`dados_consolidados_com_scores_das_duas_PCAs_CVall.csv`, `loadings_PCA_*_CV_all.csv`).
 
 **Key insight**: CV_02 captures short-term stability vs. instability (PC1 dominates 76.1%). CV_30 captures seasonal variability (more balanced PC1/PC2). CV_ALL captures inter-annual trends with regional homogenization.
 
@@ -118,12 +117,11 @@ Too large to copy; used only by Python environmental processing scripts.
 | MODIS CHL-a | `K:\MODIS_CHL\` or similar | PCA_LOCAL_bubbleplot.py |
 | NOAA CRW DHW | `K:\NOAA_CRW_DHW\` | DHW_maps.py, EXTREME_EVENTS_*.py |
 
-### GIS Shapefiles
+### GIS Baselayers (centralized 2026-09-12)
 | Data | Path | Used By |
 |------|------|---------|
-| Bathymetry | `C:\Users\rbfra\OneDrive\GIS shapes\` | PCA_GLOBAL_maps_COMPOSITE_GEMINI.py |
-| Coastline | Same | Map scripts |
-| Reef polygons | Same | Map scripts |
+| Coastline/islands/reef vectors, GEBCO_2024b.nc (11 MB) | `#######FINAL_DATA/06_gis_shapes/` (tracked) | GA_map_1x3_strip_v3.py, PCA_GLOBAL_maps_*, DHW_maps.py |
+| gebco_2024_ASO.nc (198 MB), uc_fed shapefile (34 MB) | external via `MUSHIS_GIS_DIR` (public sources: gebco.net, MMA/ICMBio) | same map scripts |
 
 ### Model Output RDS Files (outputs, not inputs)
 | Location | Contents |
@@ -138,7 +136,7 @@ Too large to copy; used only by Python environmental processing scripts.
 
 ## Path Mapping: Current Script Paths → Centralized Locations
 
-This table maps hardcoded paths in scripts to their new centralized locations. **Scripts have NOT yet been updated** — this mapping is for a future migration task.
+This mapping was APPLIED to all non-legacy scripts on 2026-09-12 (commit: 'refactor(paths): replace OneDrive/ONEDRIVE_NOVO absolute paths').
 
 | Current Script Path | Centralized Path |
 |---------------------|-----------------|
