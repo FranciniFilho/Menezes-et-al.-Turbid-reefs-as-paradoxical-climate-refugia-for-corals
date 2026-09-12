@@ -1,107 +1,112 @@
-## Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
+# Thriving under stress: How turbid coastal reefs act as paradoxical climate refugia for corals
 
-## Rafael Menezes1,*, Carolina F. Schlosser2,3,*, Mariana Marcondes Couto2,3, Ericka O.C. Coni2, Camilo M. Ferreira4, Pedro M. Meirelles4, Andreia C.C. Barbosa2, Marcelo V. Kitahara2, Miguel Mies5, Samuel C. Faria2, Ronaldo B. Francini-Filho2,**
+**Rafael Menezes<sup>1,\*</sup>, Carolina F. Schlosser<sup>2,3,\*</sup>, Mariana Marcondes Couto<sup>2,3</sup>, Ericka O.C. Coni<sup>2</sup>, Camilo M. Ferreira<sup>4</sup>, Pedro M. Meirelles<sup>4</sup>, Andreia C.C. Barbosa<sup>2</sup>, Marcelo V. Kitahara<sup>2</sup>, Miguel Mies<sup>5</sup>, Samuel C. Faria<sup>2</sup>, Ronaldo B. Francini-Filho<sup>2,\*\*</sup>**
 
-1Universidade Federal Rural de Pernambuco, Departamento de Pesca e Aquicultura. Universidade Federal Rural de Pernambuco Dois Irmãos 52171900 - Recife, PE – Brasil. 
-2Centro de Biologia Marinha, Universidade de São Paulo. Rodovia Manuel Hypólito do Rego, km 131,5 – 11612-109 São Sebastião, SP, Brazil. 
-3Programa de Pós-graduação em Ecologia, Instituto de Biociências, Universidade de São Paulo, Rua do Matão, 321, Cidade Universitária, 05508-090, São Paulo, Brazil
-4Instituto de Biologia, Universidade Federal da Bahia (UFBA), 40170-290, Salvador, BA, Brazil. 
-5Instituto Oceanográfico, Universidade de São Paulo, Praça do Oceanográfico, 191, Cidade Universitária, São Paulo, SP 05508-120, Brazil
-* Authors contributed equally to this work.
-**Corresponding author. E-mail: francinifilho@usp.br; +55 83 999528622
+<sup>1</sup>Universidade Federal Rural de Pernambuco, Recife, PE, Brazil · <sup>2</sup>Centro de Biologia Marinha, Universidade de São Paulo, São Sebastião, SP, Brazil · <sup>3</sup>Programa de Pós-graduação em Ecologia, USP · <sup>4</sup>Instituto de Biologia, Universidade Federal da Bahia, Salvador, BA, Brazil · <sup>5</sup>Instituto Oceanográfico, USP
 
+\* Equal contribution · \*\* Corresponding author: francinifilho@usp.br
 
 ## Abstract
-Naturally stressful reef environments can enhance coral thermal tolerance, yet whether chronic stress exposure improves or erodes baseline coral performance remains unresolved. Combining three years of in situ monitoring with satellite-derived environmental data across Brazil's Abrolhos Bank, we employed Bayesian hierarchical models and Joint Species Distribution Models (JSDMs) to assess the health, growth, and competitive dynamics of the endemic reef-building coral Mussismilia hispida. Coral metrics were modeled against the magnitude and multiscale temporal variability of SST, chlorophyll-a (Chl-a), and Daily Light Integral (DLI), alongside the frequency of acute thermal stress (DHW > 4). Reef walls of turbid coastal reefs emerged as paradoxical refugia: despite experiencing the highest environmental instability and 15-fold more frequent acute thermal stress, they supported the healthiest coral populations, underpinned by lower DLI, cooler baseline SST, and elevated Chl-a. Habitat type, not the environmental gradients themselves, was the single strongest predictor of coral health, with walls consistently outperforming reef tops and rocky reefs. Seasonal-scale environmental variability conferred an additional health benefit, consistent with an acclimatization mechanism operating at the timescale of symbiont and lipid dynamics. At the community level, JSDMs identified DLI as the primary driver of benthic composition, with macroalgal dominance over M. hispida increasing sharply under higher irradiance. Environmental variability independently modulated competitive outcomes: SST and DLI variability suppressed macroalgae, whereas Chl-a and DLI fluctuations promoted beneficial crustose coralline algae (CCA). We propose that dynamic coastal environments protect corals through a dual mechanism, functioning simultaneously as acclimatization arenas that build coral thermal tolerance without the typical physiological costs and as ecological filters that suppress competitors while promoting facilitating species. Protecting these highly variable yet functionally critical refugia should be a conservation priority to safeguard corals in a rapidly warming ocean.
-Keywords: Coral Bleaching, Environmental Memory, Adaptive Potential, Mussismilia hispida, Reef Conservation
 
+Naturally stressful reef environments can enhance coral thermal tolerance, yet whether chronic stress exposure improves or erodes baseline coral performance remains unresolved. Combining three years of in situ monitoring with satellite-derived environmental data across Brazil's Abrolhos Bank, we employed Bayesian hierarchical models and Joint Species Distribution Models (JSDMs) to assess the health, growth, and competitive dynamics of the endemic reef-building coral *Mussismilia hispida*. Coral metrics were modeled against the magnitude and multiscale temporal variability of SST, chlorophyll-a, and Daily Light Integral (DLI), alongside the frequency of acute thermal stress (DHW > 4). Reef walls of turbid coastal reefs emerged as paradoxical refugia: despite experiencing the highest environmental instability and 15-fold more frequent acute thermal stress, they supported the healthiest coral populations, underpinned by lower DLI, cooler baseline SST, and elevated Chl-a. At the community level, JSDMs identified DLI as the primary driver of benthic composition, with macroalgal dominance over *M. hispida* increasing sharply under higher irradiance. We propose that dynamic coastal environments protect corals through a dual mechanism, functioning simultaneously as acclimatization arenas and as ecological filters that suppress competitors while promoting facilitating species.
 
-
-## Overview
-
-Marine ecology research investigating the distribution, abundance, health, and growth of the endemic reef-building coral ***Mussismilia hispida*** across the Abrolhos Bank, Brazil. Uses Bayesian models (ZOIB, Gaussian, JSDM Dirichlet) via `brms` to quantify coral responses to environmental gradients (SST, DLI, CHL-a, depth) across habitats and reef arcs.
-
-## Central Hypothesis — The "Hidden Memory" Refugia
-
-Turbid, nearshore inner-arc reefs act as **paradoxical climate refugia**: conditions historically considered stressful (high turbidity, lower light) actually buffer corals against thermal stress. Lower SST variability, reduced light, and higher chlorophyll promote superior coral conditions compared to "pristine" outer-arc reefs.
+**Keywords:** Coral Bleaching · Environmental Memory · Adaptive Potential · *Mussismilia hispida* · Reef Conservation
 
 ## Repository Structure
 
 ```
-#######FINAL_CODES/                              # All analysis scripts (R + Python)
-  Bayes_models/
-    New_Bayes_Models_YEAR_RE/                    # Primary Bayesian pipeline (210 models)
-    New_Bayes_Models_YEAR_RE_GLM/                # GLM variants (experimental)
-    New_Bayes_Models_YEAR_RE_OPUS/               # Palythoa-augmented JSDM
-    BACKUP_legacy_scripts_before_YEAR_RE/        # Archived legacy scripts
-#######FINAL_DATA/                               # Centralized input data
-  00_sites_metadata/                             # Site coordinates & reference files
-  01_raw_biological/                             # Raw monitoring & measurement data
-  02_PCA_environmental/                          # PCA scores (CV_02, CV_30, CV_ALL)
-  03_modeling_data/                              # Integrated modeling datasets
-  04_health_growth_PCA/                          # Colony-level health & growth PCA
-  05_benthic_cover/                              # Benthic community cover data
-  DATA_REGISTRY.md                               # Complete manifest of all data files
-#######FINAL_RESULTS/                            # Generated outputs (figures, models)
-#######LAST ROUND MS/                            # Scientific manuscript
-#######PHOTOS AND MAPS/                          # Visualizations and figures
-docs/                                            # Technical notes, diagnostics, quickstart
+#######FINAL_CODES/                                   # All analysis scripts (R + Python)
+  Bayes_models/New_Bayes_Models_YEAR_RE/              # PRIMARY Bayesian pipeline (210 models)
+  Bayes_models/New_Bayes_Models_YEAR_RE_GLM/          # GLM variants (Palythoa-augmented JSDM)
+  Bayes_models/New_Bayes_Models_YEAR_RE_OPUS/         # Palythoa JSDM extension
+  Variability_analysis/                               # Time-series & extreme-events scripts
+  Legacy/                                             # Superseded scripts (historical reference)
+#######FINAL_DATA/                                    # Curated input data (42 files, tracked)
+  00_sites_metadata/                                  # Site coordinates & reference lists
+  01_raw_biological/                                  # Raw monitoring & vitality measurements
+  02_PCA_environmental/CV_{02,30,ALL}/                # Environmental PCA scores & loadings
+  03_modeling_data/CV_{02,30,ALL}/                    # Integrated modeling datasets
+  04_health_growth_PCA/                               # Colony-level health & growth PCA
+  05_benthic_cover/                                   # Benthic community cover (long format)
+  06_gis_shapes/                                      # GIS vector baselayers + GEBCO_2024b.nc
+  DivingPAM_2013_TIM3/                                # PAM fluorometry data (.xls/.pam)
+  DATA_REGISTRY.md                                    # Complete data manifest
+docs/                                                 # Technical notes & historical guides
+#######FINAL_RESULTS/                                 # Generated at runtime (gitignored; see Data Availability)
 ```
+
+## Quick Start
+
+Requirements: R ≥ 4.3 with `brms`, `cmdstanr`, `tidybayes`, `ggdist`, `patchwork`, `sf`; Python ≥ 3.10 with `pandas`, `numpy`, `scikit-learn`, `scipy`, `matplotlib`. All commands run **from the repository root** (the folder containing this README).
+
+```bash
+# 1. Colony health PCA + growth rates (embedded data only)
+python "#######FINAL_CODES/Calculate_RGR_&_health_PCA.py"
+
+# 2. Rebuild the integrated modeling tables (CV_ALL shown; outputs under FINAL_RESULTS)
+python "#######FINAL_CODES/FINAL_DATA_INTEGRATION.py"
+
+# 3. One ZOIB model family (R; full 210-model grid = 00_RUN_ALL_YEAR_RE_MODELS.R)
+Rscript "#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/01_ZOIB_YEAR_RE_Full_LOO_Selection.R"
+
+# 4. Publication figures from fitted winners
+Rscript "#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R"
+```
+
+Every script verifies at startup that it is being run from the repository root and fails with an instructive error otherwise.
 
 ## Analysis Pipeline
 
-| Step | Tool | Description |
-|------|------|-------------|
-| 1 | Python | Environmental PCA (3 CV windows: CV_02, CV_30, CV_ALL) |
-| 2 | Python | PERMANOVA — REEF factor redundancy test |
-| 3 | Python | Health PCA + Relative Growth Rate (RGR) |
-| 4 | Python | Data integration (biological + environmental + metadata) |
-| 5 | Python | Temporal trends & extreme events analysis |
-| 6 | Python | Global environmental maps & DHW maps |
-| 7 | R | Bayesian modeling: ZOIB (abundance), Gaussian (health/growth), JSDM Dirichlet (community) |
-| 8 | R | Publication figures (forest plots, PDPs, variance partitioning) |
-| 9 | R | JSDM dominance probability analysis |
-| 10 | R | Complementary BRT models |
+| Step | Tool | Scripts | Description |
+|------|------|---------|-------------|
+| 1 | Python | `PCA_LOCAL_bubbleplot_v2.py` | Environmental PCA (3 CV windows; needs satellite archive — see External data) |
+| 2 | Python | `PERMANOVA_Local_PCA.py` | REEF factor redundancy test |
+| 3 | Python | `Calculate_RGR_&_health_PCA.py` | Health PCA + growth rates |
+| 4 | Python | `FINAL_DATA_INTEGRATION.py` | Integrate biological + environmental data |
+| 5 | Python | `Variability_analysis/TIME_SERIES_*.py`, `EXTREME_EVENTS_*_v2.py` | Temporal trends & extreme events |
+| 6 | Python | `PCA_GLOBAL_maps_COMPOSITE_*.py`, `DHW_maps.py`, `GA_map_1x3_strip_v3.py` | Maps & spatial figures |
+| 7 | R | `Bayes_models/New_Bayes_Models_YEAR_RE/00_RUN_ALL_YEAR_RE_MODELS.R` | Bayesian modeling (210 models) |
+| 7-ALT | R | `Bayes_models/New_Bayes_Models_YEAR_RE_OPUS/03_JSDM_with_PALYTHOA.R` | Palythoa-augmented JSDM |
+| 8 | R | `04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R` | Publication figures |
+| 9 | R | `07/08_Extract|Visualize_JSDM_Dominance*.R` | JSDM dominance analysis |
+| 10 | R | `GAM_Size_vs_Bleaching_Mortality.R` | Size vs bleaching/mortality GAMs |
 
 ## Model Architecture
 
 | Model | Response | Family | Random Effects |
 |-------|----------|--------|----------------|
-| ZOIB | Coral cover (0-1) | `zero_one_inflated_beta()` | `(1|SITE) + (1|YEAR)` |
-| Health | HEALTH_PC1, PC2 | `gaussian()` | `(1|SITE) + (1|YEAR)` |
-| RGR | Growth rate | `gaussian()` | `(1|REEF)` |
-| JSDM | Community composition | `dirichlet()` | `(1|SITE) + (1|YEAR)` |
+| ZOIB | Coral cover (0–1) | `zero_one_inflated_beta()` | `(1\|SITE) + (1\|YEAR)` |
+| Health | HEALTH_PC1, PC2 | `gaussian()` | `(1\|SITE) + (1\|YEAR)` |
+| RGR | Growth rate | `gaussian()` | `(1\|REEF)` |
+| JSDM | Community composition | `dirichlet()` | `(1\|SITE) + (1\|YEAR)` |
 
-7 candidate models per response, compared via LOOIC. Global winners selected across 3 CV scenarios.
+Seven candidate models per response, compared via LOOIC; global winners selected across 3 CV scenarios (CV_02 short-term, CV_30 seasonal, CV_ALL inter-annual).
 
 ## Key Variables
 
-- **HAB**: PA (reef walls), RR (rocky reefs), TP (reef tops)
-- **ARCH** (ARC): Inner (coastal refugia) vs Outer (oceanic, stressed)
-- **PCA Magnitude**: Mean environmental conditions (SST, DLI, CHL-a)
-- **PCA Variability**: Temporal CV at 3 windows (short-term, seasonal, inter-annual)
+- **HAB**: PA (reef walls), RR (rocky reefs), TP (reef tops); HABMERGED for JSDM
+- **ARCH** (ARC): Inner (coastal refugia) vs Outer (oceanic)
+- **PCA Magnitude**: mean environmental conditions (SST, DLI, Chl-a)
+- **PCA Variability**: temporal CV at 3 windows
 
-## Quick Start
+## External Data (optional steps)
 
-```bash
-# Full Bayesian pipeline
-Rscript "#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/00_RUN_ALL_YEAR_RE_MODELS.R" canonical WeaklyInformative
+Scripts that consume the raw satellite archive or very large GIS rasters resolve their location through environment variables and fail with instructions when unset:
 
-# Publication figures
-Rscript "#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R"
+| Variable | Used by | Content |
+|----------|---------|---------|
+| `MUSHIS_RS_ARCHIVE` | `PCA_LOCAL_bubbleplot*`, `TIME_SERIES_*`, `EXTREME_EVENTS_*`, `DHW_maps.py`, `PCA_GLOBAL_maps_*`, `Smart_MODIS_database_update.py` | Root folder containing `NOAA_CRW_SST/`, `MODIS_DLI_8DAY/`, `MODIS_CHL/`, `NOAA_CRW_DHW/`, `MODIS_DATA_FULL/`, `CRW_DHW_FULL/`, `CRW_SST_FULL/` (NOAA CRW & MODIS Aqua archives) |
+| `MUSHIS_GIS_DIR` | `GA_map_1x3_strip_v3.py`, `Graphical_Abstract_GCB_RGB_Classification.py`, `DHW_maps.py`, `Optimal_CV_window.py`, `PCA_GLOBAL_maps_*` | Folder containing `gebco_2024_ASO.nc` (GEBCO 2024 bathymetry, https://www.gebco.net/) and `uc_fed_agosto_2016_site_shp/` (federal marine protected areas, MMA/ICMBio). Defaults to the embedded `#######FINAL_DATA/06_gis_shapes/` |
+| `EARTHDATA_TOKEN` | `Smart_MODIS_database_update.py` | NASA EarthData JWT (https://urs.earthdata.nasa.gov/) for re-downloading MODIS scenes |
 
-# Environmental PCA (Python)
-python PCA_LOCAL_bubbleplot_v2.py
-```
+Everything needed for the statistical analyses (steps 2–5, 7–10) is embedded in `#######FINAL_DATA/`.
+
+## Data Availability
+
+All curated input data are tracked in this repository (`#######FINAL_DATA/`, 42 files; see `DATA_REGISTRY.md`). Model fits (3.4 GB), high-resolution figure outputs, and the 2013 Diving-PAM field photographs are archived on Zenodo: **[DOI_PENDING]**. `#######FINAL_RESULTS/` is generated locally at runtime and intentionally not tracked.
 
 ## Documentation
 
-- **[AGENTS.md](AGENTS.md)** — Repository guidelines, pipeline summary, coding conventions
-- **[CLAUDE.md](CLAUDE.md)** — Comprehensive project documentation (527 lines)
-- **[DATA_REGISTRY.md](#######FINAL_DATA/DATA_REGISTRY.md)** — Complete manifest of centralized input data
-- **[docs/](docs/)** — Technical notes, JSDM diagnostics, quickstart guides
-
-## Dependencies
-
-**R**: brms, cmdstanr, tidybayes, ggdist, ggplot2, patchwork, sf, dplyr
-**Python**: pandas, numpy, xarray, scikit-learn, scipy, matplotlib, cartopy, geopandas
+- **[DATA_REGISTRY.md](#######FINAL_DATA/DATA_REGISTRY.md)** — complete manifest of input data
+- **[AGENTS.md](AGENTS.md)** / **[CLAUDE.md](CLAUDE.md)** — repository guidelines and pipeline notes
+- **[docs/](docs/)** — technical notes; historical JSDM-correction guides are banner-marked

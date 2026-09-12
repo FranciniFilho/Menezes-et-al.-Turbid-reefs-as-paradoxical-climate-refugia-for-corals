@@ -1,3 +1,8 @@
+> **HISTORICAL NOTE (2026-09-12):** this guide documents the v5-era JSDM correction work.
+> The active pipeline is `#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/`.
+> Scripts referenced below now live under `#######FINAL_CODES/Legacy/`; OneDrive output paths
+> have been replaced by `#######FINAL_RESULTS/` subdirectories.
+
 # Guia de Correções JSDM Dirichlet
 
 ## Modelagem Bayesiana de Distribuição de Corais (*Mussismilia hispida*) no Banco dos Abrolhos
@@ -172,13 +177,13 @@ rm(list = ls())
 gc()
 
 # Executar pipeline completo
-source("#######FINAL_CODES/MASTER_Viz_Pipeline_v5_JSDM_FIXED.R")
+source("#######FINAL_CODES/Legacy/MASTER_Viz_Pipeline_v5_JSDM_FIXED.R")
 ```
 
 **O que acontece:**
 1. O script busca automaticamente todos os modelos WINNER nos diretórios configurados
 2. Processa cada modelo e gera figuras corrigidas
-3. Salva na pasta: `C:/Users/rbfra/OneDrive/Bayesian_Figures_Publication_v5_FIXED`
+3. Salva na pasta: `#######FINAL_RESULTS/Bayesian_Figures_Publication_v5_FIXED`
 
 **Figuras geradas para modelos JSDM:**
 - `FIGURE_1_Forest_Plot.png` - Forest plot padrão
@@ -199,7 +204,7 @@ source("#######FINAL_CODES/MASTER_Viz_Pipeline_v5_JSDM_FIXED.R")
 source("#######FINAL_CODES/JSDM_Correction_Module.R")
 
 # 2. Carregar o modelo
-model <- readRDS("C:/Users/rbfra/OneDrive/Bayesian_Full_LOO_Selection_v5/JSDM_Dirichlet/WINNER_JSDM_full_CV_ALL.rds")
+model <- readRDS("#######FINAL_RESULTS/Bayesian_Full_LOO_Selection_v5/JSDM_Dirichlet/WINNER_JSDM_full_CV_ALL.rds")
 
 # 3. Gerar Forest Plot com M. hispida
 p_forest <- generate_jsdm_forest_plot_errorbar_CORRECTED(model, "JSDM Model")
@@ -222,7 +227,7 @@ ggsave("pdps_por_especie.png", p_per_species, width = 14, height = 10, dpi = 300
 
 ```r
 # Executar demonstração
-source("#######FINAL_CODES/JSDM_Demo_and_Validation.R")
+source("#######FINAL_CODES/Legacy/JSDM_Demo_and_Validation.R")
 ```
 
 **O que acontece:**
