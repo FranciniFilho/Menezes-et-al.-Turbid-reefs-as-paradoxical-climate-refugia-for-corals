@@ -7,7 +7,6 @@
 #   1. Cover figure: 5 organisms (CCA, Cyano, Macroalgae, M. hispida, Turf)
 #   2. RGR figure: M. hispida only
 #
-# Aesthetic standards match: PCA_Health_Interactions_Composite_GLM.R
 # ============================================================================
 
 # --- 1. PACKAGES ---

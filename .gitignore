@@ -85,13 +85,8 @@ plans/
 !\#\#\#\#\#\#\#FINAL_CODES/*.py
 
 # Project documentation (human-readable, essential for reproducibility)
-!CLAUDE.md
-!GEMINI.md
-!\#\#\#\#\#\#\#FINAL_CODES/CLAUDE.md
-!\#\#\#\#\#\#\#FINAL_CODES/GEMINI.md
 
 # Test files (essential for validation)
-!\#\#\#\#\#\#\#FINAL_CODES/test_prior_syntax.R
 
 # --- RAW field photos (never track; archived in the Zenodo deposit) ---
 *.NEF
@@ -106,5 +101,32 @@ plans/
 !#######FINAL_DATA/03_modeling_data/**
 !#######FINAL_DATA/04_health_growth_PCA/**
 !#######FINAL_DATA/05_benthic_cover/**
-!#######FINAL_DATA/06_gis_shapes/**
 !#######FINAL_DATA/07_lomb_frequencies/**
+
+# --- Local-only retention (kept on disk, intentionally NOT in the public remote) ---
+AGENTS.md
+CLAUDE.md
+\#\#\#\#\#\#\#FINAL_CODES/Legacy/
+\#\#\#\#\#\#\#FINAL_CODES/Variability_analysis/
+\#\#\#\#\#\#\#FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE_GLM/
+\#\#\#\#\#\#\#FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE_OPUS/
+\#\#\#\#\#\#\#FINAL_CODES/BOXPLOT_cover_REEF_HAB.py
+\#\#\#\#\#\#\#FINAL_CODES/PAM_Analysis_Complete.R
+\#\#\#\#\#\#\#FINAL_CODES/model_analysis_report.md
+\#\#\#\#\#\#\#FINAL_CODES/GA_map_1x3_strip_v3.py
+\#\#\#\#\#\#\#FINAL_CODES/Graphical_Abstract_GCB_RGB_Classification.py
+\#\#\#\#\#\#\#FINAL_CODES/GAM_Size_vs_Bleaching_Mortality.R
+\#\#\#\#\#\#\#FINAL_CODES/SIZE_vs_BLEACHING_MORTALITY.py
+\#\#\#\#\#\#\#FINAL_CODES/DEPTH vs DLI scatterplot.R
+\#\#\#\#\#\#\#FINAL_CODES/DHW_maps.py
+\#\#\#\#\#\#\#FINAL_CODES/Optimal_CV_window.py
+\#\#\#\#\#\#\#FINAL_CODES/Smart_MODIS_database_update.py
+\#\#\#\#\#\#\#FINAL_CODES/PCA_GLOBAL_maps_COMPOSITE_GEMINI.py
+\#\#\#\#\#\#\#FINAL_CODES/PCA_GLOBAL_maps_COMPOSITE_GLM.py
+\#\#\#\#\#\#\#FINAL_CODES/PCA_Health_Interactions_Composite_GLM.R
+\#\#\#\#\#\#\#FINAL_CODES/PCA_Health_Interactions_Composite_vGeminiPro.R
+\#\#\#\#\#\#\#FINAL_CODES/Boxplot_Cover_RGR_GLM.R
+\#\#\#\#\#\#\#FINAL_DATA/DivingPAM_2013_TIM3/
+\#\#\#\#\#\#\#FINAL_DATA/06_gis_shapes/
+\#\#\#\#\#\#\#FINAL_DATA/01_raw_biological/BENTHOS_TEMPORAL_CLEAN_v2.csv
+\#\#\#\#\#\#\#FINAL_DATA/00_sites_metadata/sites_list_full_clean_PLEST.csv

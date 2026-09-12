@@ -2,7 +2,8 @@
 
 > **Last updated**: 2026-09-12  
 > **Purpose**: Manifest of all input data files centralized in `#######FINAL_DATA/`.  
-> **Status**: path migration COMPLETE — all non-legacy scripts read from `#######FINAL_DATA/` and write to `#######FINAL_RESULTS/`.
+> **Status**: path migration COMPLETE — all scripts read from `#######FINAL_DATA/` and write to `#######FINAL_RESULTS/`.
+> **Local-only datasets** (archived outside the public repo): Diving-PAM 2013 campaign, BENTHOS_TEMPORAL_CLEAN_v2, sites_list_full_clean_PLEST, GIS baselayers.
 
 ---
 
@@ -32,7 +33,6 @@
 |------|-----------|-------------|---------|
 | `sites_list_full.csv` | `########CEBIMAR\####PROJETOS\#####Coral trade offs\` | Full site list with coordinates (lat, lon), reef names, SITE codes, ARCH designation | PCA_LOCAL_bubbleplot.py, FINAL_DATA_INTEGRATION.py, multiple R model scripts |
 | `sites_list_full_clean.csv` | `########CEBIMAR\####PROJETOS\#####Coral trade offs\` | Cleaned version with standardized site names | PCA_LOCAL_bubbleplot_v2.py, some time-series scripts |
-| `sites_list_full_clean_PLEST.csv` | `######22.04.23\DATA\` | Site list including Palythoa/Millepora estimates for JSDM with Palythoa | 00_Palythoa_JSDM_Functions.R |
 
 ---
 
@@ -40,10 +40,7 @@
 
 | File | Source Path | Description | Used By |
 |------|-----------|-------------|---------|
-| `Vitality and size_new.csv` | Already in FINAL_DATA (root) | Colony-level vitality, size, and health measurements for M. hispida | Calculate_RGR_&_health_PCA.py |
 | `Vitality_and_size_new.xlsx` | Already in FINAL_DATA (root, as `######Vitality and size_new.xlsx`) | Excel version of vitality data (original with formatting) | Manual reference |
-| `BENTHOS_TEMPORAL_CLEAN_v2.csv` | `######22.04.23\DATA\BENTHOS TEMPORAL CLEAN_v2.csv` | Multi-year benthic community composition transect data (all species) | 00_Palythoa_JSDM_Functions.R, JSDM data preparation |
-| `DivingPAM_2013_TIM3/` | Already in FINAL_DATA | Diving-PAM fluorometry data (Fv/Fm) from 2013 campaign at Timbebas reef | PAM_Analysis_Complete.R |
 
 ---
 
@@ -122,12 +119,6 @@ Too large to copy; used only by Python environmental processing scripts.
 | MODIS CHL-a | `K:\MODIS_CHL\` or similar | PCA_LOCAL_bubbleplot.py |
 | NOAA CRW DHW | `K:\NOAA_CRW_DHW\` | DHW_maps.py, EXTREME_EVENTS_*.py |
 
-### GIS Baselayers (centralized 2026-09-12)
-| Data | Path | Used By |
-|------|------|---------|
-| Coastline/islands/reef vectors, GEBCO_2024b.nc (11 MB) | `#######FINAL_DATA/06_gis_shapes/` (tracked) | GA_map_1x3_strip_v3.py, PCA_GLOBAL_maps_*, DHW_maps.py |
-| gebco_2024_ASO.nc (198 MB), uc_fed shapefile (34 MB) | external via `MUSHIS_GIS_DIR` (public sources: gebco.net, MMA/ICMBio) | same map scripts |
-
 ### Model Output RDS Files (outputs, not inputs)
 | Location | Contents |
 |----------|----------|
@@ -155,5 +146,3 @@ This mapping was APPLIED to all non-legacy scripts on 2026-09-12 (commit: 'refac
 | `../#######FINAL_RESULTS/%%BOX_PLOTS_benthic_cover/*.csv` | `#######FINAL_DATA/05_benthic_cover/*.csv` |
 | `########CEBIMAR\...\sites_list_full.csv` | `#######FINAL_DATA/00_sites_metadata/sites_list_full.csv` |
 | `########CEBIMAR\...\sites_list_full_clean.csv` | `#######FINAL_DATA/00_sites_metadata/sites_list_full_clean.csv` |
-| `######22.04.23\DATA\sites_list_full_clean_PLEST.csv` | `#######FINAL_DATA/00_sites_metadata/sites_list_full_clean_PLEST.csv` |
-| `######22.04.23\DATA\BENTHOS TEMPORAL CLEAN_v2.csv` | `#######FINAL_DATA/01_raw_biological/BENTHOS_TEMPORAL_CLEAN_v2.csv` |

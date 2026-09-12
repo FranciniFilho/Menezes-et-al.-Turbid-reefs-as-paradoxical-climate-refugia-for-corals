@@ -15,23 +15,19 @@ Naturally stressful reef environments can enhance coral thermal tolerance, yet w
 ## Repository Structure
 
 ```
-#######FINAL_CODES/                                   # All analysis scripts (R + Python)
+#######FINAL_CODES/                                   # Analysis scripts (R + Python)
   Bayes_models/New_Bayes_Models_YEAR_RE/              # PRIMARY Bayesian pipeline (210 models)
-  Bayes_models/New_Bayes_Models_YEAR_RE_GLM/          # GLM variants (Palythoa-augmented JSDM)
-  Bayes_models/New_Bayes_Models_YEAR_RE_OPUS/         # Palythoa JSDM extension
-  Variability_analysis/                               # Time-series & extreme-events scripts
-  Legacy/                                             # Superseded scripts (historical reference)
-#######FINAL_DATA/                                    # Curated input data (42 files, tracked)
+  Bayes_models/00_LOO_Selection_Functions.R           # Shared LOO/convergence functions (sourced by the pipeline)
+#######FINAL_DATA/                                    # Curated input data (tracked)
   00_sites_metadata/                                  # Site coordinates & reference lists
-  01_raw_biological/                                  # Raw monitoring & vitality measurements
+  01_raw_biological/                                  # Raw vitality measurements
   02_PCA_environmental/CV_{02,30,ALL}/                # Environmental PCA scores & loadings
   03_modeling_data/CV_{02,30,ALL}/                    # Integrated modeling datasets
   04_health_growth_PCA/                               # Colony-level health & growth PCA
   05_benthic_cover/                                   # Benthic community cover (long format)
-  06_gis_shapes/                                      # GIS vector baselayers + GEBCO_2024b.nc
-  DivingPAM_2013_TIM3/                                # PAM fluorometry data (.xls/.pam)
+  07_lomb_frequencies/                                # Lomb-Scargle frequencies (DHW exposure inputs)
   DATA_REGISTRY.md                                    # Complete data manifest
-docs/                                                 # Technical notes & historical guides
+docs/                                                 # JSDM correction guide & Dirichlet reference
 #######FINAL_RESULTS/                                 # Generated at runtime (gitignored; see Data Availability)
 ```
 
@@ -63,13 +59,9 @@ Every script verifies at startup that it is being run from the repository root a
 | 2 | Python | `PERMANOVA_Local_PCA.py` | REEF factor redundancy test |
 | 3 | Python | `Calculate_RGR_&_health_PCA.py` | Health PCA + growth rates |
 | 4 | Python | `FINAL_DATA_INTEGRATION.py` | Integrate biological + environmental data |
-| 5 | Python | `Variability_analysis/TIME_SERIES_*.py`, `EXTREME_EVENTS_*_v2.py` | Temporal trends & extreme events |
-| 6 | Python | `PCA_GLOBAL_maps_COMPOSITE_*.py`, `DHW_maps.py`, `GA_map_1x3_strip_v3.py` | Maps & spatial figures |
-| 7 | R | `Bayes_models/New_Bayes_Models_YEAR_RE/00_RUN_ALL_YEAR_RE_MODELS.R` | Bayesian modeling (210 models) |
-| 7-ALT | R | `Bayes_models/New_Bayes_Models_YEAR_RE_OPUS/03_JSDM_with_PALYTHOA.R` | Palythoa-augmented JSDM |
-| 8 | R | `04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R` | Publication figures |
-| 9 | R | `07/08_Extract|Visualize_JSDM_Dominance*.R` | JSDM dominance analysis |
-| 10 | R | `GAM_Size_vs_Bleaching_Mortality.R` | Size vs bleaching/mortality GAMs |
+| 5 | R | `Bayes_models/New_Bayes_Models_YEAR_RE/00_RUN_ALL_YEAR_RE_MODELS.R` | Bayesian modeling (210 models) |
+| 6 | R | `04_MASTER_Viz_Pipeline_YEAR_RE_v7_CATEGORICAL.R` | Publication figures |
+| 7 | R | `07/08_Extract|Visualize_JSDM_Dominance*.R` | JSDM dominance analysis |
 
 ## Model Architecture
 
@@ -91,15 +83,13 @@ Seven candidate models per response, compared via LOOIC; global winners selected
 
 ## External Data (optional steps)
 
-Scripts that consume the raw satellite archive or very large GIS rasters resolve their location through environment variables and fail with instructions when unset:
+The environmental PCA (step 1) consumes the raw satellite archive, resolved through an environment variable:
 
 | Variable | Used by | Content |
 |----------|---------|---------|
-| `MUSHIS_RS_ARCHIVE` | `PCA_LOCAL_bubbleplot*`, `TIME_SERIES_*`, `EXTREME_EVENTS_*`, `DHW_maps.py`, `PCA_GLOBAL_maps_*`, `Smart_MODIS_database_update.py` | Root folder containing `NOAA_CRW_SST/`, `MODIS_DLI_8DAY/`, `MODIS_CHL/`, `NOAA_CRW_DHW/`, `MODIS_DATA_FULL/`, `CRW_DHW_FULL/`, `CRW_SST_FULL/` (NOAA CRW & MODIS Aqua archives) |
-| `MUSHIS_GIS_DIR` | `GA_map_1x3_strip_v3.py`, `Graphical_Abstract_GCB_RGB_Classification.py`, `DHW_maps.py`, `Optimal_CV_window.py`, `PCA_GLOBAL_maps_*` | Folder containing `gebco_2024_ASO.nc` (GEBCO 2024 bathymetry, https://www.gebco.net/) and `uc_fed_agosto_2016_site_shp/` (federal marine protected areas, MMA/ICMBio). Defaults to the embedded `#######FINAL_DATA/06_gis_shapes/` |
-| `EARTHDATA_TOKEN` | `Smart_MODIS_database_update.py` | NASA EarthData JWT (https://urs.earthdata.nasa.gov/) for re-downloading MODIS scenes |
+| `MUSHIS_RS_ARCHIVE` | `PCA_LOCAL_bubbleplot_v2.py` | Root folder containing `NOAA_CRW_SST/`, `MODIS_DLI_8DAY/`, `MODIS_CHL/`, `NOAA_CRW_DHW/` (NOAA CRW & MODIS Aqua archives) |
 
-Everything needed for the statistical analyses (steps 2–5, 7–10) is embedded in `#######FINAL_DATA/`.
+Everything needed for the statistical analyses (steps 2–7) is embedded in `#######FINAL_DATA/`.
 
 ## Data Availability
 
@@ -108,5 +98,4 @@ All curated input data are tracked in this repository (`#######FINAL_DATA/`, 42 
 ## Documentation
 
 - **[DATA_REGISTRY.md](#######FINAL_DATA/DATA_REGISTRY.md)** — complete manifest of input data
-- **[AGENTS.md](AGENTS.md)** / **[CLAUDE.md](CLAUDE.md)** — repository guidelines and pipeline notes
-- **[docs/](docs/)** — technical notes; historical JSDM-correction guides are banner-marked
+- **[docs/](docs/)** — JSDM correction guide and Dirichlet-model technical reference
