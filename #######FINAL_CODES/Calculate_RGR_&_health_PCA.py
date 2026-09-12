@@ -17,7 +17,7 @@ import math  # Importado para ajudar a organizar as figuras compostas
 print("--- Iniciando Script 2: Análise Biológica (Versão Aprimorada) ---")
 base_path = "#######FINAL_DATA/01_raw_biological"
 file_vitality = os.path.join(base_path, "Vitality_and_size_new.xlsx")
-output_dir = r"#######FINAL_RESULTS/#######FINAL_DATA/04_health_growth_PCA"
+output_dir = r"#######FINAL_DATA/04_health_growth_PCA"
 os.makedirs(output_dir, exist_ok=True)
 print(f"Diretório de saída definido para: {output_dir}")
 try:
