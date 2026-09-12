@@ -126,11 +126,11 @@ Too large to copy; used only by Python environmental processing scripts.
 ### Model Output RDS Files (outputs, not inputs)
 | Location | Contents |
 |----------|----------|
-| `C:\Users\rbfra\OneDrive\New_Bayes_Models_Output\` | Canonical YEAR_RE model fits |
-| `C:\Users\rbfra\OneDrive\New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1\` | Prior sensitivity grid |
+| `#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/` | Canonical YEAR_RE model fits |
+| `#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/` | Prior sensitivity grid |
 | `#######FINAL_RESULTS\BAYES_MODELS_FINAL_RES\` | Archived model copies |
-| `C:\Users\rbfra\OneDrive\JSDM_Dominance_Figures\` | JSDM dominance analysis outputs |
-| `C:\Users\rbfra\OneDrive\JSDM_Palythoa_Output_Opus\` | Palythoa JSDM outputs |
+| `#######FINAL_RESULTS/JSDM_Dominance/` | JSDM dominance analysis outputs |
+| `#######FINAL_RESULTS/JSDM_Palythoa_Opus/` | Palythoa JSDM outputs |
 
 ---
 
