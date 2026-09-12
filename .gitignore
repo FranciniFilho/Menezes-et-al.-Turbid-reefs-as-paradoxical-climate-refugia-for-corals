@@ -92,3 +92,18 @@ plans/
 
 # Test files (essential for validation)
 !\#\#\#\#\#\#\#FINAL_CODES/test_prior_syntax.R
+
+# --- RAW field photos (never track; archived in the Zenodo deposit) ---
+*.NEF
+*.nef
+*.JPG
+*.jpg
+
+# --- Curated reviewer-facing input data (overrides global *.csv/*.xlsx ignores) ---
+!#######FINAL_DATA/00_sites_metadata/**
+!#######FINAL_DATA/01_raw_biological/**
+!#######FINAL_DATA/02_PCA_environmental/**
+!#######FINAL_DATA/03_modeling_data/**
+!#######FINAL_DATA/04_health_growth_PCA/**
+!#######FINAL_DATA/05_benthic_cover/**
+!#######FINAL_DATA/06_gis_shapes/**
