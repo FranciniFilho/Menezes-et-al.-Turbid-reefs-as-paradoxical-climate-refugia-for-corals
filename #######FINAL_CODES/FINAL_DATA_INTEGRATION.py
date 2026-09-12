@@ -18,7 +18,7 @@ path_pca_local = r"#######FINAL_DATA/02_PCA_environmental/CV_ALL"
 file_ambiental_scores = os.path.join(path_pca_local, "dados_consolidados_com_scores_das_duas_PCAs.xlsx")
 path_biologico = r"#######FINAL_DATA/04_health_growth_PCA"
 file_resultados_biologicos = os.path.join(path_biologico, "resultados_biologicos_por_colonia.csv")
-path_frequencia = r"#######FINAL_RESULTS/LOMB_SCARGLE_POR_ARCO_FINAL"
+path_frequencia = r"#######FINAL_DATA/07_lomb_frequencies"
 
 # --- Diretório de Saída ---
 output_dir = r"#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_all_lat"

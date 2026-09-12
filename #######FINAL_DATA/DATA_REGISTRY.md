@@ -97,6 +97,11 @@ Each CV subdirectory contains the final integrated dataset for Bayesian modeling
 
 ---
 
+## 07_lomb_frequencies/
+| File | Description | Used By |
+|------|-------------|---------|
+| `frequencias_primarias_secundarias_.csv` | Primary/secondary Lomb-Scargle spectral frequencies per reef arc (DHW exposure inputs) | FINAL_DATA_INTEGRATION.py |
+
 ## 05_benthic_cover/
 
 | File | Source Dir | Description | Used By |
