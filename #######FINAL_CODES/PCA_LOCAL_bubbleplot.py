@@ -24,6 +24,11 @@ from sklearn.preprocessing import StandardScaler
 import dask
 import psutil
 import gc
+# External satellite archive root (see README "External data")
+RS_ARCHIVE = os.environ.get("MUSHIS_RS_ARCHIVE")
+if not RS_ARCHIVE:
+    raise SystemExit("Set MUSHIS_RS_ARCHIVE to the local satellite-archive root (see README).")
+
 
 # ==============================
 # Configurações Iniciais
@@ -38,7 +43,7 @@ logging.basicConfig(
 # ==============================
 # Caminhos e parâmetros principais
 # ==============================
-output_dir = r"C:\Users\rbfra\OneDrive\########CEBIMAR\###Orientacoes e Supervisoes\###Mestrado Mariana\PROJETO FAPESP\R1_plus_v2"
+output_dir = r"#######FINAL_RESULTS/PCA_LOCAL_R1_plus_v2"
 os.makedirs(output_dir, exist_ok=True)
 
 # ==============================
@@ -61,10 +66,10 @@ print(f"==> ANÁLISE CONFIGURADA PARA A OPÇÃO DE CV: '{analysis_selector}' <==
 print(f"============================================================")
 
 # --- Períodos e Caminhos ---
-sst_dir   = r"E:\remote sensing\CRW_SST_FULL"
-modis_dir = r"E:\remote sensing\MODIS_DATA_FULL"
-chl_dir   = r"E:\remote sensing\MODIS_DATA_FULL"
-dhw_dir   = r"E:\remote sensing\CRW_DHW_FULL"
+sst_dir   = ros.path.join(RS_ARCHIVE, "remote sensing/CRW_SST_FULL")
+modis_dir = ros.path.join(RS_ARCHIVE, "remote sensing/MODIS_DATA_FULL")
+chl_dir   = ros.path.join(RS_ARCHIVE, "remote sensing/MODIS_DATA_FULL")
+dhw_dir   = ros.path.join(RS_ARCHIVE, "remote sensing/CRW_DHW_FULL")
 
 sst_period   = (2020, 2024)
 dhw_period   = (2020, 2024)
@@ -77,7 +82,7 @@ chl_period   = (2020, 2024)
 #chl_period   = (2007, 2008)
 
 
-sites_csv_file = r"C:\Users\rbfra\OneDrive\########CEBIMAR\####PROJETOS\#####Coral trade offs\sites_list_full.csv"
+sites_csv_file = r"#######FINAL_DATA/00_sites_metadata/sites_list_full.csv"
 lat_min, lat_max = -20.5, -14.5
 lon_min, lon_max = -40.5, -35.5
 sst_pattern   = 'coraltemp_v3.1_*.nc'

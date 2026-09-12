@@ -15,9 +15,9 @@ import math  # Importado para ajudar a organizar as figuras compostas
 # 1. CONFIGURAÇÕES E LEITURA DOS DADOS
 # ---------------------------
 print("--- Iniciando Script 2: Análise Biológica (Versão Aprimorada) ---")
-base_path = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######22.04.23\DATA"
-file_vitality = os.path.join(base_path, "######Vitality and size_new.xlsx")
-output_dir = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######FINAL\#######FINAL_RESULTS\#output_ANALISE_BIOLOGICA_boxplot_PCAnew_YEAR_RE"
+base_path = "#######FINAL_DATA/01_raw_biological"
+file_vitality = os.path.join(base_path, "Vitality_and_size_new.xlsx")
+output_dir = r"#######FINAL_RESULTS/#######FINAL_DATA/04_health_growth_PCA"
 os.makedirs(output_dir, exist_ok=True)
 print(f"Diretório de saída definido para: {output_dir}")
 try:

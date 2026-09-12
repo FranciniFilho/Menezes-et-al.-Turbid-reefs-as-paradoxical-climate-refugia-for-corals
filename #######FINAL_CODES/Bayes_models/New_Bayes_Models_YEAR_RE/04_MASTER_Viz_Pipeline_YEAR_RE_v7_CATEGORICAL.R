@@ -86,15 +86,15 @@ resolve_viz_namespace_v7 <- function(run_namespace = c("canonical", "prior_sens_
         return(list(
             run_namespace = run_namespace,
             prior_scenario_target = prior_scenario_target,
-            global_winner_dir = "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE",
-            output_dir = "C:/Users/rbfra/OneDrive/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL"
+            global_winner_dir = "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/Global_Winners_YEAR_RE",
+            output_dir = "#######FINAL_RESULTS/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL"
         ))
     }
     list(
         run_namespace = run_namespace,
         prior_scenario_target = prior_scenario_target,
-        global_winner_dir = "C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_RESULTS/BAYES_MODELS_FINAL_RES/PS_FULLGRID_Global_Winners_YEAR_RE",
-        output_dir = "C:/Users/rbfra/OneDrive/Abrolhos_Results/PS_FULLGRID_Figures"
+        global_winner_dir = "#######FINAL_RESULTS/BAYES_MODELS_FINAL_RES/PS_FULLGRID_Global_Winners_YEAR_RE",
+        output_dir = "#######FINAL_RESULTS/PS_FULLGRID_scratch/PS_FULLGRID_Figures"
     )
 }
 

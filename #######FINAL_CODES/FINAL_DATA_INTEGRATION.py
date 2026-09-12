@@ -13,15 +13,15 @@ import glob
 print("--- Iniciando Script de Integração Final (Nível Colônia) - Versão 7 (com Lat/Lon) ---")
 
 # --- Caminhos de Entrada ---
-sites_csv_path = r"C:\Users\rbfra\OneDrive\########CEBIMAR\####PROJETOS\#####Coral trade offs\sites_list_full.csv"
-path_pca_local = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\#####output_local_PCA_CV_all_FINAL"
+sites_csv_path = r"#######FINAL_DATA/00_sites_metadata/sites_list_full.csv"
+path_pca_local = r"#######FINAL_DATA/02_PCA_environmental/CV_ALL"
 file_ambiental_scores = os.path.join(path_pca_local, "dados_consolidados_com_scores_das_duas_PCAs.xlsx")
-path_biologico = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\#output_ANALISE_BIOLOGICA"
+path_biologico = r"#######FINAL_DATA/04_health_growth_PCA"
 file_resultados_biologicos = os.path.join(path_biologico, "resultados_biologicos_por_colonia.csv")
-path_frequencia = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\##LOMB_SCARGLE_POR_ARCO_FINAL"
+path_frequencia = r"#######FINAL_RESULTS/LOMB_SCARGLE_POR_ARCO_FINAL"
 
 # --- Diretório de Saída ---
-output_dir = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\output_DADOS_FINAIS_PARA_MODELAGEM_cv_all_lat"
+output_dir = r"#######FINAL_RESULTS/output_DADOS_FINAIS_PARA_MODELAGEM_cv_all_lat"
 os.makedirs(output_dir, exist_ok=True)
 print(f"Diretório de saída definido para: {output_dir}")
 

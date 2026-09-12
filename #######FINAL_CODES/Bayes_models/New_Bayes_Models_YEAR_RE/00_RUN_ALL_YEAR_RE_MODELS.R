@@ -12,20 +12,20 @@
 # ============================================================================
 
 # Set working directory
-setwd("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/")
-
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
+# Repo-root execution guard (see README "How to run")
+if (!dir.exists("#######FINAL_DATA")) stop("Run this script from the repository root.")
 args <- commandArgs(trailingOnly = TRUE)
 run_namespace <- if (length(args) >= 1) args[[1]] else "prior_sens_fullgrid"
 prior_scenario_target <- if (length(args) >= 2) args[[2]] else "WeaklyInformative"
 
 output_root <- if (run_namespace == "prior_sens_fullgrid") {
-  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
+  "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/"
 } else {
-  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
+  "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/"
 }
 
 # Scripts to run (in order)
@@ -100,7 +100,7 @@ for (i in seq_along(scripts_to_run)) {
 
   # Run the script
   status <- tryCatch({
-    source(script_info$script)
+    source(file.path(script_dir, script_info$script))
     "SUCCESS"
   }, error = function(e) {
     cat(sprintf("\n❌ Script failed: %s\n", e$message))
@@ -160,9 +160,9 @@ if (n_success > 0) {
     n_global <- sum(global_summary$Status == "OK", na.rm = TRUE)
     cat(sprintf("Global winners created: %d\n", n_global))
     if (run_namespace == "prior_sens_fullgrid") {
-      cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Global_Winners_YEAR_RE/\n")
+      cat("Global directory: #######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/PS_FULLGRID_Global_Winners_YEAR_RE//n")
     } else {
-      cat("Global directory: C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/\n")
+      cat("Global directory: #######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/Global_Winners_YEAR_RE//n")
     }
 
     cat("\nRunning detailed winner report stage (06)...\n")

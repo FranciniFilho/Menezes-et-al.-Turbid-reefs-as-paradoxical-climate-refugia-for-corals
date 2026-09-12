@@ -20,7 +20,7 @@ from matplotlib.lines import Line2D
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-output_base = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######FINAL\#######FINAL_RESULTS"
+output_base = r"#######FINAL_RESULTS"
 output_dir = os.path.join(output_base, "#####output_local_PCA_v2_FINAL")
 os.makedirs(output_dir, exist_ok=True)
 

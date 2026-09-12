@@ -57,8 +57,8 @@ color_secondary <- "#E69F00"
 hab_colors      <- c("PA" = "#009E73", "RR_TP" = "#D55E00")
 
 ## Directories
-WINNER_DIR <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE"
-OUT_DIR    <- "C:/Users/rbfra/OneDrive/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL/Summary_Colony_Models"
+WINNER_DIR <- "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/Global_Winners_YEAR_RE"
+OUT_DIR    <- "#######FINAL_RESULTS/Bayesian_Figures_YEAR_RE_v7_CATEGORICAL/Summary_Colony_Models"
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 NDRAWS <- 2000

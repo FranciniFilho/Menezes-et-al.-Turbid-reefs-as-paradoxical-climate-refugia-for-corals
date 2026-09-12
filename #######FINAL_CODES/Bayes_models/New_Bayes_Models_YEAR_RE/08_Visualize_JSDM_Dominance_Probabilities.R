@@ -70,8 +70,8 @@ COMP_COLS_STACK <- c("Coral (M. hispida)" = "#0072B2",
 
 # ── 3. I/O DIRECTORIES ──────────────────────────────────────────────────────
 
-input_dir  <- "C:/Users/rbfra/OneDrive/JSDM_Dominance_Figures/"
-output_dir <- "C:/Users/rbfra/OneDrive/JSDM_Dominance_Figures/"
+input_dir  <- "#######FINAL_RESULTS/JSDM_Dominance/"
+output_dir <- "#######FINAL_RESULTS/JSDM_Dominance/"
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 save_fig <- function(fig, name, w, h) {
@@ -130,14 +130,7 @@ cat("  Status distribution:\n")
 print(table(site_level$status))
 
 # ── Env. variability data from CV_ALL window (JSDM model predictor) ──────────
-cv_all_path <- paste0(
-  "C:/Users/rbfra/OneDrive/",
-  "########PUBLICACOES/",
-  "############Menezes et al. Mus his distribution and abundance Abrolhos/",
-  "######FINAL/#######FINAL_RESULTS/",
-  "#####output_local_PCA_CV_all_FINAL/",
-  "dados_abundancia_integrados_long_format.csv"
-)
+cv_all_path <- "#######FINAL_DATA/02_PCA_environmental/CV_ALL/dados_abundancia_integrados_long_format.csv"
 
 first_line_cv <- readLines(cv_all_path, n = 1L, encoding = "UTF-8")
 delim_cv      <- if (grepl(";", first_line_cv, fixed = TRUE)) ";" else ","

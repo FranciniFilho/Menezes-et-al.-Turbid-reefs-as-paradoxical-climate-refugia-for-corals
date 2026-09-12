@@ -32,14 +32,14 @@ invisible(lapply(libs, function(lib) {
 }))
 
 # --- 2. PATHS ---
-base_dir <- "C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos"
+base_dir <- "."
 
 # Input paths (corrected based on actual file locations)
-cover_data_path <- file.path(base_dir, "######FINAL/#######FINAL_RESULTS/%%BOX_PLOTS_benthic_cover/dados_integrados_long_format.csv")
-rgr_data_path <- file.path(base_dir, "######FINAL/#######FINAL_RESULTS/#output_ANALISE_BIOLOGICA/resultados_biologicos_por_colonia.csv")
+cover_data_path <- "#######FINAL_DATA/05_benthic_cover/dados_integrados_long_format.csv"
+rgr_data_path <- "#######FINAL_DATA/04_health_growth_PCA/resultados_biologicos_por_colonia.csv"
 
 # Output directory with _Opus suffix
-output_dir <- file.path(base_dir, "######FINAL/#######FINAL_RESULTS/Boxplot_Publication_Figures_Opus")
+output_dir <- "#######FINAL_RESULTS/Boxplot_Publication_Figures_Opus"
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 message(paste("Output directory:", output_dir))

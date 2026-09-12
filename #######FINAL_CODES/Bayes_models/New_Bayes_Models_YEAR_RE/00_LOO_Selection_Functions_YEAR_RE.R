@@ -11,17 +11,17 @@
 suppressMessages(library(brms))
 
 # Then source the original functions
-source("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_CODES/Bayes_models/00_LOO_Selection_Functions.R")
+source("#######FINAL_CODES/Bayes_models/00_LOO_Selection_Functions.R")
 
 # ============================================================================
 # SECTION 1: PATH DEFINITIONS FOR YEAR RE MODELS
 # ============================================================================
 
 # Base output directory for YEAR RE models (separate from original outputs)
-BASE_OUTPUT_DIR_YEAR_RE <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
+BASE_OUTPUT_DIR_YEAR_RE <- "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/"
 
 # Full-grid prior sensitivity output namespace (must remain isolated)
-BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
+BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/"
 
 # Create base directories
 dir.create(BASE_OUTPUT_DIR_YEAR_RE, showWarnings = FALSE, recursive = TRUE)
@@ -83,21 +83,11 @@ ZOIB_ACCELERATION_ACTIVE <- ENABLE_OPENCL_ZOIB
 
 # Raw health data path (with yearly observations)
 # Using list.files to avoid # character issues
-RAW_HEALTH_EXCEL <- list.files(
-  path = "C:/Users/rbfra/OneDrive/",
-  pattern = "Vitality and size_new\\.xlsx$",
-  recursive = TRUE,
-  full.names = TRUE
-)[1]
+RAW_HEALTH_EXCEL <- "#######FINAL_DATA/01_raw_biological/Vitality_and_size_new.xlsx"
 
 # PCA scores path (for loading existing loadings - NOT recalculating!)
 # Using list.files to avoid # character issues
-PCA_SCORES_CANDIDATES <- list.files(
-  path = "C:/Users/rbfra/OneDrive/",
-  pattern = "scores_PCA_Saude\\.xlsx$",
-  recursive = TRUE,
-  full.names = TRUE
-)
+PCA_SCORES_CANDIDATES <- "#######FINAL_DATA/04_health_growth_PCA/scores_PCA_Saude.xlsx"
 PCA_SCORES_YEAR_RE <- PCA_SCORES_CANDIDATES[grepl("YEAR_RE", PCA_SCORES_CANDIDATES, ignore.case = TRUE)]
 PCA_SCORES_PATH <- if (length(PCA_SCORES_YEAR_RE) > 0) PCA_SCORES_YEAR_RE[1] else PCA_SCORES_CANDIDATES[1]
 
@@ -2165,7 +2155,7 @@ brms_args_jsdm_year_re <- list(
 # ============================================================================
 
 # Project root (same as original)
-PROJECT_ROOT <- "C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/"
+PROJECT_ROOT <- "."
 RESULTS_DIR <- file.path(PROJECT_ROOT, "#######FINAL_RESULTS/")
 
 # Abundance dataset paths (for ZOIB and JSDM) - contain YEAR

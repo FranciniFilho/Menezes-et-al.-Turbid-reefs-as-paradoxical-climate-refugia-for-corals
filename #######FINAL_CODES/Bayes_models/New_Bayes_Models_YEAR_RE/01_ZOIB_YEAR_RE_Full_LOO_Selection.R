@@ -6,7 +6,8 @@
 # Writes outputs only to PS_FULLGRID namespace
 # ============================================================================
 
-setwd("C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/")
+# Repo-root execution guard (see README "How to run")
+if (!dir.exists("#######FINAL_DATA")) stop("Run this script from the repository root.")
 source("00_LOO_Selection_Functions_YEAR_RE.R")
 
 suppressPackageStartupMessages({

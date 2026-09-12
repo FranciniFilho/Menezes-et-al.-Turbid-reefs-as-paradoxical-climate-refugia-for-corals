@@ -21,7 +21,7 @@ libs <- c(
 invisible(lapply(libs, library, character.only = TRUE))
 
 # --- Caminhos ---
-base_dir <- "C:/Users/rbfra/OneDrive/########PUBLICACOES/############Menezes et al. Mus his distribution and abundance Abrolhos/######FINAL/#######FINAL_RESULTS"
+base_dir <- "#######FINAL_RESULTS"
 
 output_dir <- file.path(base_dir, "PCA_Publication_Figures_v2")
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)

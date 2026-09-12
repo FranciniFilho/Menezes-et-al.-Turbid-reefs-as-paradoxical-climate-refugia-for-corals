@@ -19,10 +19,10 @@ from scipy.stats import f_oneway, levene
 
 # === CAMINHOS E CONFIGURAÇÕES ===
 # Aponta para o arquivo de saída padrão do script PCA LOCAL
-input_file = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\#####output_local_PCA_CV_2_FINAL\dados_consolidados_com_scores_das_duas_PCAs.xlsx"
+input_file = r"#######FINAL_DATA/02_PCA_environmental/CV_02/dados_consolidados_com_scores_das_duas_PCAs.xlsx"
 
 # Diretório principal para os resultados desta análise
-base_output_dir = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\########NEW RESULTS\PERMANOVA_ANOVA_LOCAL_PCA_CV_2"
+base_output_dir = r"#######FINAL_RESULTS/PERMANOVA_ANOVA_LOCAL_PCA_CV_2"
 os.makedirs(base_output_dir, exist_ok=True)
 
 

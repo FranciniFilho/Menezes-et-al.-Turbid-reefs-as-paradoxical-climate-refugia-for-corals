@@ -25,15 +25,12 @@
 #     of the 3rd dimension of the prediction array.
 #     FIX: response indices are now derived from dimnames(fitted_vals)[[3]].
 #
-# OUTPUT DIRECTORY changed to C:/Users/rbfra/OneDrive/JSDM_Dominance_Figures/
+# OUTPUT DIRECTORY changed to #######FINAL_RESULTS/JSDM_Dominance/
 # to avoid Windows MAX_PATH issues caused by deeply-nested long filenames.
 # ============================================================================
 
-setwd(paste0(
-  "C:/Users/rbfra/OneDrive/########PUBLICACOES/",
-  "############Menezes et al. Mus his distribution and abundance Abrolhos/",
-  "######FINAL/#######FINAL_CODES/Bayes_models/New_Bayes_Models_YEAR_RE/"
-))
+# Repo-root execution guard (see README "How to run")
+if (!dir.exists("#######FINAL_DATA")) stop("Run this script from the repository root.")
 
 suppressPackageStartupMessages({
   library(brms)
@@ -52,20 +49,15 @@ set.seed(42)
 # ============================================================================
 
 winner_paths <- c(
-  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/Global_Winners_YEAR_RE/WINNER_GLOBAL_jsdm.rds",
-  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/PS_FULLGRID_Global_Winners_YEAR_RE/WINNER_GLOBAL_jsdm_weaklyinformative.rds",
-  "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/JSDM_Dirichlet_YEAR_RE/CV_ALL/jsdm_year_re_nohabitat_interaction_CV_ALL.rds"
+  "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/Global_Winners_YEAR_RE/WINNER_GLOBAL_jsdm.rds",
+  "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/PS_FULLGRID_Global_Winners_YEAR_RE/WINNER_GLOBAL_jsdm_weaklyinformative.rds",
+  "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/JSDM_Dirichlet_YEAR_RE/CV_ALL/jsdm_year_re_nohabitat_interaction_CV_ALL.rds"
 )
 
-data_path <- paste0(
-  "C:/Users/rbfra/OneDrive/########PUBLICACOES/",
-  "############Menezes et al. Mus his distribution and abundance Abrolhos/",
-  "######FINAL/#######FINAL_RESULTS/#####output_local_PCA_CV_all_FINAL/",
-  "dados_abundancia_integrados_long_format.csv"
-)
+data_path <- "#######FINAL_DATA/02_PCA_environmental/CV_ALL/dados_abundancia_integrados_long_format.csv"
 
 # Short output path avoids Windows MAX_PATH corruption
-output_dir <- "C:/Users/rbfra/OneDrive/JSDM_Dominance_Figures/"
+output_dir <- "#######FINAL_RESULTS/JSDM_Dominance/"
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # ============================================================================

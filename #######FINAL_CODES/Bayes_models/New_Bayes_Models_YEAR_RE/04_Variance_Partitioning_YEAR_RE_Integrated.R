@@ -39,8 +39,8 @@ set.seed(42)
 # 2. PATH DEFINITIONS
 # ============================================================================
 
-BASE_OUTPUT_DIR_YEAR_RE <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output/"
-BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "C:/Users/rbfra/OneDrive/New_Bayes_Models_Output_PRIOR_SENSITIVITY_FULLGRID_v1/"
+BASE_OUTPUT_DIR_YEAR_RE <- "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE/"
+BASE_OUTPUT_DIR_YEAR_RE_PRIOR_SENS <- "#######FINAL_RESULTS/BAYES_MODELS_YEAR_RE_PRIOR_SENSITIVITY/"
 
 normalize_prior_scenario <- function(prior_tag) {
   tag <- tolower(trimws(as.character(prior_tag)))

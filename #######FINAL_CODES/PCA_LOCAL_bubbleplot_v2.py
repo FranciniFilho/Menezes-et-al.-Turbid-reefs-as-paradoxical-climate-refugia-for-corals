@@ -25,6 +25,11 @@ from sklearn.preprocessing import StandardScaler
 import dask
 import psutil
 import gc
+# External satellite archive root (see README "External data")
+RS_ARCHIVE = os.environ.get("MUSHIS_RS_ARCHIVE")
+if not RS_ARCHIVE:
+    raise SystemExit("Set MUSHIS_RS_ARCHIVE to the local satellite-archive root (see README).")
+
 
 logging.basicConfig(
     filename="pca_local_v2_errors.log",
@@ -33,7 +38,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-output_base = r"C:\Users\rbfra\OneDrive\########PUBLICACOES\############Menezes et al. Mus his distribution and abundance Abrolhos\######FINAL\#######FINAL_RESULTS"
+output_base = r"#######FINAL_RESULTS"
 output_dir = os.path.join(output_base, "#####output_local_PCA_v2_FINAL")
 os.makedirs(output_dir, exist_ok=True)
 
@@ -53,17 +58,17 @@ print("PCA LOCAL v2 - Publication-Quality Figure Generation")
 print(f"CV Windows: {cv_windows}")
 print("=" * 60)
 
-sst_dir = r"F:\remote sensing\CRW_SST_FULL"
-modis_dir = r"F:\remote sensing\MODIS_DATA_FULL"
-chl_dir = r"F:\remote sensing\MODIS_DATA_FULL"
-dhw_dir = r"F:\remote sensing\CRW_DHW_FULL"
+sst_dir = ros.path.join(RS_ARCHIVE, "remote sensing/CRW_SST_FULL")
+modis_dir = ros.path.join(RS_ARCHIVE, "remote sensing/MODIS_DATA_FULL")
+chl_dir = ros.path.join(RS_ARCHIVE, "remote sensing/MODIS_DATA_FULL")
+dhw_dir = ros.path.join(RS_ARCHIVE, "remote sensing/CRW_DHW_FULL")
 
 sst_period = (2020, 2024)
 dhw_period = (2020, 2024)
 light_period = (2020, 2024)
 chl_period = (2020, 2024)
 
-sites_csv_file = r"C:\Users\rbfra\OneDrive\########CEBIMAR\####PROJETOS\#####Coral trade offs\sites_list_full.csv"
+sites_csv_file = r"#######FINAL_DATA/00_sites_metadata/sites_list_full.csv"
 lat_min, lat_max = -20.5, -14.5
 lon_min, lon_max = -40.5, -35.5
 sst_pattern = "coraltemp_v3.1_*.nc"
